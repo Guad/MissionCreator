@@ -30,6 +30,7 @@ namespace ContentCreator.Editor.NestedMenus
         {
             Clear();
 
+            #region Player
             {
                 var item = new NativeMenuItem("Player");
 
@@ -102,12 +103,19 @@ namespace ContentCreator.Editor.NestedMenus
                 };
 
             }
+            #endregion
 
+            #region Objectives
             {
                 var item = new NativeMenuItem("Objectives");
+                var newMenu = new ObjectivePlacementMenu(data);
+                Editor.Children.Add(newMenu);
+                BindMenuToItem(newMenu, item);
                 AddItem(item);
             }
+            #endregion
 
+            #region Actors
             {
                 var item = new NativeMenuItem("Actors");
 
@@ -178,6 +186,9 @@ namespace ContentCreator.Editor.NestedMenus
 
             }
 
+            #endregion
+
+            #region Cars
             {
                 var item = new NativeMenuItem("Cars");
                 var dict = StaticData.VehicleData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
@@ -248,11 +259,94 @@ namespace ContentCreator.Editor.NestedMenus
                     });
                 };
             }
+            #endregion
 
+            #region Pickups
             {
                 var item = new NativeMenuItem("Pickups");
+                var dict = StaticData.WeaponsData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
+                var menu = new CategorySelectionMenu(dict, "Weapon");
+                
+                menu.Build("Pistols");
+                Children.Add(menu);
                 AddItem(item);
+                BindMenuToItem(menu, item);
+
+                item.Activated += (men, itm) =>
+                {
+                    Editor.RingData.Color = Color.MediumPurple;
+                    Editor.RingData.Type = RingType.HorizontalSplitArrowCircle;
+                    Editor.MarkerData.Display = true;
+                    Editor.MarkerData.MarkerType = "prop_mp_placement";
+                    Editor.MarkerData.RepresentationHeightOffset = 1f;
+                    GameFiber.StartNew(delegate
+                    {
+                        var hash =
+                            StaticData.WeaponsData.Database[menu.CurrentSelectedCategory].First(
+                                tuple => tuple.Item1 == menu.CurrentSelectedItem).Item2;
+                        
+                        var pos = Game.LocalPlayer.Character.Position;
+                        var veh =
+                            World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", hash,
+                                                                                                 9999, pos.X, pos.Y, pos.Z,
+                                                                                                 true, 3f));
+                        Editor.PlacedWeaponHash = hash;
+                        veh.IsPositionFrozen = true;
+                        Editor.MarkerData.RepresentedBy = veh;
+                        NativeFunction.CallByName<uint>("SET_ENTITY_COLLISION", veh.Handle.Value, false, 0);
+                    });
+                };
+
+                menu.OnMenuClose += (men) =>
+                {
+                    if (Editor.MarkerData.RepresentedBy != null && Editor.MarkerData.RepresentedBy.IsValid())
+                        Editor.MarkerData.RepresentedBy.Delete();
+
+                    Editor.MarkerData.RepresentedBy = null;
+                    Editor.MarkerData.MarkerType = null;
+                    Editor.MarkerData.Display = false;
+                    Editor.MarkerData.HeightOffset = 0f;
+                    Editor.MarkerData.RepresentationHeightOffset = 0f;
+                    Editor.RingData.HeightOffset = 0f;
+                    Editor.RingData.Color = Color.Gray;
+                    Editor.RingData.Type = RingType.HorizontalCircleSkinny;
+                    Editor.PlacedWeaponHash = 0;
+                };
+
+                menu.SelectionChanged += (sender, eventargs) =>
+                {
+                    GameFiber.StartNew(delegate
+                    {
+                        var heading = 0f;
+                        if (Editor.MarkerData.RepresentedBy != null && Editor.MarkerData.RepresentedBy.IsValid())
+                        {
+                            heading = Editor.MarkerData.RepresentedBy.Heading;
+                            Editor.MarkerData.RepresentedBy.Delete();
+                        }
+
+
+                        var hash =
+                            StaticData.WeaponsData.Database[menu.CurrentSelectedCategory].First(
+                                tuple => tuple.Item1 == menu.CurrentSelectedItem).Item2;
+                        
+                        var pos = Game.LocalPlayer.Character.Position;
+                        var veh =
+                            World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", hash,
+                                                                                                 9999, pos.X, pos.Y, pos.Z,
+                                                                                                 true, 3f));
+
+                        veh.Heading = heading;
+                        veh.IsPositionFrozen = true;
+                        Editor.PlacedWeaponHash = hash;
+                        Editor.MarkerData.RepresentedBy = veh;
+                        NativeFunction.CallByName<uint>("SET_ENTITY_COLLISION", veh.Handle.Value, false, 0);
+                        //var dims = Util.GetModelDimensions(veh.Model);
+                        //Editor.RingData.HeightOffset = 1f;
+                        //Editor.MarkerData.HeightOffset = 1f;
+                    });
+                };
             }
+            #endregion
 
             {
                 var item = new NativeMenuItem("Objects");

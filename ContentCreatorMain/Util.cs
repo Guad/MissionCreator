@@ -9,6 +9,13 @@ namespace ContentCreator
     {
         public static bool IsGamepadEnabled => !NativeFunction.CallByHash<bool>(0xA571D46727E2B718, 0);
 
+        public static void DrawMarker(int type, Vector3 pos, Vector3 rot, Vector3 scale, Color color)
+        {
+            NativeFunction.CallByName<uint>("DRAW_MARKER", type, pos.X, pos.Y, pos.Z, 0f, 0f, 0f,
+                    rot.X, rot.Y, rot.Z, scale.X, scale.Y, scale.Z, (int)color.R, (int)color.G, (int)color.B, (int)color.A, false, false,
+                    2, false, false, false, false);
+        }
+
         public unsafe static Vector3 GetModelDimensions(Model model)
         {
             Vector3 *min;

@@ -31,6 +31,7 @@ namespace ContentCreator.Editor
         public float HeadingOffset { get; set; }
         public float HeightOffset { get; set; }
         public Entity RepresentedBy { get; set; }
+        public float RepresentationHeightOffset { get; set; }
         public string MarkerType
         {
             get { return _markerType; }

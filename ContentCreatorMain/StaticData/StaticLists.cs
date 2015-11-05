@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace ContentCreator.StaticData
 {
@@ -48,6 +49,8 @@ namespace ContentCreator.StaticData
         {
             "Never",
         };
+
+        public static List<dynamic> ObjectiveIndexList = new List<dynamic>(Enumerable.Range(1, 300).Select(n => (dynamic) n));
 
         public static void Init()
         {

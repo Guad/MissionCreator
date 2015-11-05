@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Linq;
 using ContentCreator.Editor.NestedMenus;
 using ContentCreator.SerializableData;
+using ContentCreator.SerializableData.Objectives;
 using Rage;
 using Rage.Native;
 using RAGENativeUI;
@@ -139,6 +140,9 @@ namespace ContentCreator.Editor
         public static MarkerData MarkerData { get; set; }
         public static MissionData CurrentMission { get; set; }
         public static bool PlayerSpawnOpen { get; set; }
+        public static bool IsPlacingObjective { get; set; }
+        public static List<INestedMenu> Children;
+        public static uint PlacedWeaponHash { get; set; }
         #endregion
 
         #region Private Variables
@@ -146,7 +150,6 @@ namespace ContentCreator.Editor
 
         private float _ringRotation = 0f;
         private float _objectRotation = 0f;
-        private List<INestedMenu> Children;
         private Entity _hoveringEntity;
         private UIMenu _placementMenu;
         private INestedMenu _propertiesMenu;
@@ -217,6 +220,30 @@ namespace ContentCreator.Editor
                         v.GetEntity().Delete();
                     }
                 });
+
+                CurrentMission.Pickups.ForEach(v =>
+                {
+                    if (v.GetEntity() != null && v.GetEntity().IsValid())
+                    {
+                        v.GetEntity().Delete();
+                    }
+                });
+
+                CurrentMission.Objectives.ForEach(o =>
+                {
+                    var v = o as SerializableActorObjective;
+                    if (v?.GetPed() != null && v.GetPed().IsValid())
+                    {
+                        v.GetPed().Delete();
+                    }
+                    var p = o as SerializableVehicleObjective;
+                    if (p?.GetVehicle() != null && p.GetVehicle().IsValid())
+                    {
+                        p.GetVehicle().Delete();
+                    }
+                });
+
+                
             }
 
 
@@ -245,6 +272,9 @@ namespace ContentCreator.Editor
             CurrentMission.Actors = new List<SerializablePed>();
             CurrentMission.Objects = new List<SerializableObject>();
             CurrentMission.Spawnpoints = new List<SerializableSpawnpoint>();
+            CurrentMission.Objectives = new List<SerializableObjective>();
+            CurrentMission.Pickups = new List<SerializablePickup>();
+            CurrentMission.ObjectiveNames = new string[301];
             menuDirty = true;
         }
 
@@ -259,7 +289,7 @@ namespace ContentCreator.Editor
         {
             if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
             {
-                MarkerData.RepresentedBy.Position = pos;
+                MarkerData.RepresentedBy.Position = pos + new Vector3(0f, 0f, MarkerData.RepresentationHeightOffset);
             }
             
 
@@ -314,12 +344,63 @@ namespace ContentCreator.Editor
             _missionMenu.RefreshIndex();
         }
 
+        public enum EntityType
+        {
+            None,
+            NormalVehicle,
+            NormalActor,
+            NormalObject,
+            NormalPickup,
+            ObjectiveVehicle,
+            ObjectiveActor,
+            ObjectiveMarker,
+            ObjectivePickup,
+            ObjectiveTimer,
+            Spawnpoint
+        }
+
+        public EntityType GetEntityType(Entity ent)
+        {
+            if (ent.IsPed())
+            {
+                if(CurrentMission.Actors.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                    return EntityType.NormalActor;
+                if(CurrentMission.Spawnpoints.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                    return EntityType.Spawnpoint;
+                if (CurrentMission.Objectives.Any(o =>
+                {
+                    var act = o as SerializableActorObjective;
+                    return act?.GetPed().Handle.Value == ent.Handle.Value;
+                })) 
+                    return EntityType.ObjectiveActor;
+            }
+            else if (ent.IsVehicle())
+            {
+                if(CurrentMission.Vehicles.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                    return EntityType.NormalVehicle;
+                if (CurrentMission.Objectives.Any(o =>
+                {
+                    var act = o as SerializableVehicleObjective;
+                    return act?.GetVehicle().Handle.Value == ent.Handle.Value;
+                }))
+                    return EntityType.ObjectiveVehicle;
+            }
+            else if (ent.IsObject())
+            {
+                if(CurrentMission.Objects.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                    return EntityType.NormalObject;
+                if(CurrentMission.Pickups.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                    return EntityType.NormalPickup;
+            }
+            return EntityType.None;
+        }
+
         private void CheckForIntersection(Entity ent)
         {
             if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() && ent != null && ent.IsValid())
             {
-                if (MarkerData.RepresentedBy is Vehicle && ent.IsVehicle() &&
-                    CurrentMission.Vehicles.Any(m => m.GetEntity().Handle.Value == ent.Handle.Value))
+                var type = GetEntityType(ent);
+                if (MarkerData.RepresentedBy is Vehicle && type == EntityType.NormalVehicle && !IsPlacingObjective)
                 {
                     MarkerData.RepresentedBy.Opacity = 0f;
                     MarkerData.HeadingOffset = 45f;
@@ -327,9 +408,31 @@ namespace ContentCreator.Editor
                     _hoveringEntity = ent;
                 }
 
-                else if (MarkerData.RepresentedBy is Ped && ent.IsPed() &&
-                    (CurrentMission.Actors.Any(m => m.GetEntity().Handle.Value == ent.Handle.Value) || 
-                    CurrentMission.Spawnpoints.Any(m => m.GetEntity().Handle.Value == ent.Handle.Value)))
+                if (MarkerData.RepresentedBy is Vehicle && IsPlacingObjective && type == EntityType.ObjectiveVehicle)
+                {
+                    MarkerData.RepresentedBy.Opacity = 0f;
+                    MarkerData.HeadingOffset = 45f;
+                    RingData.Color = Color.Red;
+                    _hoveringEntity = ent;
+                }
+
+                else if (MarkerData.RepresentedBy is Ped && ent.IsPed() && !PlayerSpawnOpen && !IsPlacingObjective && type == EntityType.NormalActor)
+                {
+                    MarkerData.RepresentedBy.Opacity = 0f;
+                    MarkerData.HeadingOffset = 45f;
+                    RingData.Color = Color.Red;
+                    _hoveringEntity = ent;
+                }
+
+                else if (MarkerData.RepresentedBy is Ped && ent.IsPed() && PlayerSpawnOpen && type == EntityType.Spawnpoint)
+                {
+                    MarkerData.RepresentedBy.Opacity = 0f;
+                    MarkerData.HeadingOffset = 45f;
+                    RingData.Color = Color.Red;
+                    _hoveringEntity = ent;
+                }
+
+                else if (MarkerData.RepresentedBy is Ped && ent.IsPed() && IsPlacingObjective && type == EntityType.ObjectiveActor)
                 {
                     MarkerData.RepresentedBy.Opacity = 0f;
                     MarkerData.HeadingOffset = 45f;
@@ -338,7 +441,7 @@ namespace ContentCreator.Editor
                 }
 
                 else if (MarkerData.RepresentedBy is Ped && ent.IsVehicle() &&
-                    CurrentMission.Vehicles.Any(m => m.GetEntity().Handle.Value == ent.Handle.Value) &&
+                    type == EntityType.NormalVehicle &&
                     ((Vehicle)ent).GetFreeSeatIndex().HasValue)
                 {
                     RingData.Color = Color.GreenYellow;
@@ -346,7 +449,7 @@ namespace ContentCreator.Editor
                 }
 
                 else if (MarkerData.RepresentedBy is Object && ent.IsObject() &&
-                    CurrentMission.Objects.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                    type == EntityType.NormalObject)
                 {
                     MarkerData.RepresentedBy.Opacity = 0f;
                     MarkerData.HeadingOffset = 45f;
@@ -354,7 +457,7 @@ namespace ContentCreator.Editor
                     _hoveringEntity = ent;
                 }
             }
-            else if (_hoveringEntity != null && _hoveringEntity.IsValid() && MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+            else if (_hoveringEntity != null && _hoveringEntity.IsValid() && MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() && PlacedWeaponHash == 0)
             {
                 MarkerData.RepresentedBy.Opacity = 1f;
                 MarkerData.HeadingOffset = 0f;
@@ -363,24 +466,33 @@ namespace ContentCreator.Editor
             }
         }
 
-        private void CheckForPickup(Entity ent)
+        private void CheckForPickup(Vector3 pos)
+        {
+            if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() && PlacedWeaponHash != 0)
+            {
+                var threshold = 1.5f;
+                foreach (SerializablePickup pickup in CurrentMission.Pickups)
+                {
+                    if((pickup.GetEntity().Position - pos).Length() > threshold) continue;
+                    MarkerData.RepresentedBy.Opacity = 0f;
+                    MarkerData.HeadingOffset = 45f;
+                    RingData.Color = Color.Red;
+                    _hoveringEntity = pickup.GetEntity();
+                    return;
+                }
+                MarkerData.RepresentedBy.Opacity = 1f;
+                MarkerData.HeadingOffset = 0f;
+                RingData.Color = Color.MediumPurple;
+                _hoveringEntity = null;
+            }
+        }
+
+        private void CheckForProperty(Entity ent)
         {
             if (ent != null && ent.IsValid())
             {
-                if (ent.IsVehicle() && CurrentMission.Vehicles.Any(m => m.GetEntity().Handle.Value == ent.Handle.Value))
-                {
-                    RingData.Color = Color.Yellow;
-                    _hoveringEntity = ent;
-                }
-
-                else if (ent.IsPed() && (CurrentMission.Actors.Any(m => m.GetEntity().Handle.Value == ent.Handle.Value) ||
-                    CurrentMission.Spawnpoints.Any(m => m.GetEntity().Handle.Value == ent.Handle.Value)))
-                {
-                    RingData.Color = Color.Yellow;
-                    _hoveringEntity = ent;
-                }
-
-                else if (ent.IsObject() && CurrentMission.Objects.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                var type = GetEntityType(ent);
+                if (type != EntityType.None)
                 {
                     RingData.Color = Color.Yellow;
                     _hoveringEntity = ent;
@@ -388,9 +500,25 @@ namespace ContentCreator.Editor
             }
             else if (_hoveringEntity != null && _hoveringEntity.IsValid())
             {
+                var type = GetEntityType(_hoveringEntity);
+                if (type == EntityType.NormalPickup || type == EntityType.ObjectivePickup || type == EntityType.ObjectiveMarker) return;
                 RingData.Color = Color.Gray;
                 _hoveringEntity = null;
             }
+        }
+
+        private void CheckForPickupProperty(Vector3 pos)
+        {
+            var threshold = 1.5f;
+            foreach (SerializablePickup pickup in CurrentMission.Pickups)
+            {
+                if ((pickup.GetEntity().Position - pos).Length() > threshold) continue;
+                RingData.Color = Color.Yellow;
+                _hoveringEntity = pickup.GetEntity();
+                return;
+            }
+            RingData.Color = Color.Gray;
+            _hoveringEntity = null;
         }
 
         private void EnableControls()
@@ -434,6 +562,22 @@ namespace ContentCreator.Editor
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.FrontendPauseAlternate);
         }
 
+        public void CloseAllMenus()
+        {
+            _menuPool.CloseAllMenus();
+            CloseAllMenusRecursively(Children);
+        }
+
+        private void CloseAllMenusRecursively(List<INestedMenu> menus)
+        {
+            foreach (var menu in menus)
+            {
+                if(menu == null) return;
+                CloseAllMenusRecursively(menu.Children.Select(m => m as INestedMenu).ToList());
+                ((UIMenu) menu).Visible = false;
+            }
+        }
+
         public SerializablePed CreatePed(Model model, Vector3 pos, float heading)
         {
             var tmpPed = new Ped(model, pos, heading);
@@ -451,6 +595,44 @@ namespace ContentCreator.Editor
             tmpObj.Armor = 0;
             tmpObj.SpawnInVehicle = false;
             CurrentMission.Actors.Add(tmpObj);
+            return tmpObj;
+        }
+
+        public SerializableActorObjective CreatePedObjective(Model model, Vector3 pos, float heading)
+        {
+            var tmpPed = new Ped(model, pos, heading);
+            tmpPed.IsPositionFrozen = false;
+
+            var tmpObj = new SerializableActorObjective();
+            tmpObj.SetPed(tmpPed);
+            tmpObj.SpawnAfter = 0;
+            tmpObj.ActivateAfter = 1;
+            tmpObj.Behaviour = 0;
+            tmpObj.RelationshipGroup = 3;
+            tmpObj.WeaponAmmo = 9999;
+            tmpObj.WeaponHash = 0;
+            tmpObj.Health = 200;
+            tmpObj.Armor = 0;
+            tmpObj.SpawnInVehicle = false;
+            CurrentMission.Objectives.Add(tmpObj);
+            return tmpObj;
+        }
+
+        public SerializableVehicleObjective CreateVehicleObjective(Model model, Vector3 pos, Rotator rotation, Color primColor, Color seconColor)
+        {
+            var tmpVeh = new Vehicle(model, pos)
+            {
+                PrimaryColor = primColor,
+                SecondaryColor = seconColor,
+            };
+            tmpVeh.IsPositionFrozen = false;
+            tmpVeh.Rotation = rotation;
+            var tmpObj = new SerializableVehicleObjective();
+            tmpObj.SetVehicle(tmpVeh);
+            tmpObj.SpawnAfter = 0;
+            tmpObj.ActivateAfter = 1;
+            tmpObj.Health = 1000;
+            CurrentMission.Objectives.Add(tmpObj);
             return tmpObj;
         }
 
@@ -505,6 +687,25 @@ namespace ContentCreator.Editor
             return tmpObj;
         }
 
+        public SerializableObject CreatePickup(uint weaponHash, Vector3 pos, Rotator rot)
+        {
+            var tmpObject = World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", weaponHash,
+                                                                                                 9999, pos.X, pos.Y, pos.Z,
+                                                                                                 true, 3f));
+            tmpObject.Rotation = rot;
+            tmpObject.Position = pos;
+            tmpObject.IsPositionFrozen = true;
+            var tmpObj = new SerializablePickup();
+            tmpObj.SetEntity(tmpObject);
+            tmpObj.SpawnAfter = 0;
+            tmpObj.RemoveAfter = 0;
+            tmpObj.Respawn = false;
+            CurrentMission.Pickups.Add(tmpObj);
+            return tmpObj;
+        }
+
+
+
         public void Tick(GraphicsEventArgs canvas)
         {
             if (menuDirty)
@@ -537,7 +738,30 @@ namespace ContentCreator.Editor
 
             NativeFunction.CallByHash<uint>(0x231C8F89D0539D8F, BigMinimap, false);
 
-            
+            foreach (var objective in CurrentMission.Objectives)
+            {
+                //TODO: Get model size
+
+                if (objective is SerializableActorObjective)
+                {
+                    var ped = ((SerializableActorObjective) objective).GetPed();
+                    Util.DrawMarker(0, ped.Position + new Vector3(0, 0, 2f), new Vector3(ped.Rotation.Pitch, ped.Rotation.Roll, ped.Rotation.Yaw), new Vector3(1f, 1f, 1f), Color.FromArgb(100, 255, 10, 10) );
+                }
+                else if (objective is SerializableVehicleObjective)
+                {
+                    var ped = ((SerializableVehicleObjective)objective).GetVehicle();
+                    Util.DrawMarker(0, ped.Position + new Vector3(0, 0, 2f), new Vector3(ped.Rotation.Pitch, ped.Rotation.Roll, ped.Rotation.Yaw), new Vector3(1f, 1f, 1f), Color.FromArgb(100, 255, 10, 10));
+                }
+            }
+
+            foreach (var pickup in CurrentMission.Pickups)
+            {
+                Util.DrawMarker(1, pickup.GetEntity().Position - new Vector3(0,0,1f),
+                    new Vector3(pickup.GetEntity().Rotation.Pitch, pickup.GetEntity().Rotation.Roll, pickup.GetEntity().Rotation.Yaw),
+                    new Vector3(1f, 1f, 1f), Color.FromArgb(100, 10, 100, 255));
+            }
+
+
             if (IsInFreecam)
             {
                 var markerPos = Util.RaycastEverything(new Vector2(0, 0), MainCamera, MarkerData.RepresentedBy ?? _mainObject);
@@ -654,10 +878,20 @@ namespace ContentCreator.Editor
                     new Vector3(MainCamera.Rotation.Pitch, MainCamera.Rotation.Roll, MainCamera.Rotation.Yaw)
                     , null);
 
-                if(MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid())
-                    CheckForPickup(ent);
+                if (MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid())
+                {
+                    if (ent == null)
+                        CheckForPickupProperty(markerPos);
+                    else
+                        CheckForProperty(ent);
+                }
                 else
-                    CheckForIntersection(ent);
+                {
+                    if(ent == null)
+                        CheckForPickup(markerPos);
+                    else
+                        CheckForIntersection(ent);
+                }
                 
                 DisplayMarker(markerPos, dir);
             }
@@ -687,7 +921,7 @@ namespace ContentCreator.Editor
                 if (MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid())
                     CheckForIntersection(ent);
                 else
-                    CheckForPickup(ent);
+                    CheckForProperty(ent);
 
                 DisplayMarker(markerPos, markerPos - NativeFunction.CallByName<Vector3>("GET_GAMEPLAY_CAM_COORD"));
 
@@ -758,7 +992,7 @@ namespace ContentCreator.Editor
                 Game.IsControlJustPressed(0, GameControl.CellphoneSelect) &&
                 (_hoveringEntity == null || !_hoveringEntity.IsValid()))
             {
-                if (MarkerData.RepresentedBy is Vehicle)
+                if (MarkerData.RepresentedBy is Vehicle && !IsPlacingObjective)
                 {
                     CreateVehicle(MarkerData.RepresentedBy.Model, MarkerData.RepresentedBy.Position,
                                     MarkerData.RepresentedBy.Rotation,
@@ -766,19 +1000,38 @@ namespace ContentCreator.Editor
                                     ((Vehicle)MarkerData.RepresentedBy).SecondaryColor);
                 }
 
-                else if (MarkerData.RepresentedBy is Ped && !PlayerSpawnOpen)
+                else if (MarkerData.RepresentedBy is Vehicle && IsPlacingObjective)
+                {
+                    CreateVehicleObjective(MarkerData.RepresentedBy.Model, MarkerData.RepresentedBy.Position,
+                                    MarkerData.RepresentedBy.Rotation,
+                                    ((Vehicle)MarkerData.RepresentedBy).PrimaryColor,
+                                    ((Vehicle)MarkerData.RepresentedBy).SecondaryColor);
+                }
+
+                else if (MarkerData.RepresentedBy is Ped && !PlayerSpawnOpen && !IsPlacingObjective)
                 {
                     CreatePed(MarkerData.RepresentedBy.Model, MarkerData.RepresentedBy.Position - new Vector3(0, 0, 1f), MarkerData.RepresentedBy.Heading);
                 }
 
-                else if (MarkerData.RepresentedBy is Ped && PlayerSpawnOpen)
+                else if (MarkerData.RepresentedBy is Ped && PlayerSpawnOpen && !IsPlacingObjective)
                 {
                     CreateSpawnpoint(MarkerData.RepresentedBy.Model, MarkerData.RepresentedBy.Position - new Vector3(0, 0, 1f), MarkerData.RepresentedBy.Heading);
                 }
 
-                else if (MarkerData.RepresentedBy is Object)
+                else if (MarkerData.RepresentedBy is Ped && !PlayerSpawnOpen && IsPlacingObjective)
+                {
+                    CreatePedObjective(MarkerData.RepresentedBy.Model, MarkerData.RepresentedBy.Position - new Vector3(0, 0, 1f), MarkerData.RepresentedBy.Heading);
+                }
+
+                else if (MarkerData.RepresentedBy is Object && PlacedWeaponHash == 0)
                 {
                     CreateObject(MarkerData.RepresentedBy.Model, MarkerData.RepresentedBy.Position,
+                        MarkerData.RepresentedBy.Rotation);
+                }
+
+                else if (MarkerData.RepresentedBy is Object && PlacedWeaponHash != 0)
+                {
+                    CreatePickup(PlacedWeaponHash, MarkerData.RepresentedBy.Position,
                         MarkerData.RepresentedBy.Rotation);
                 }
             }
@@ -786,26 +1039,47 @@ namespace ContentCreator.Editor
                     _hoveringEntity != null && _hoveringEntity.IsValid() &&
                      Game.IsControlJustPressed(0, GameControl.CellphoneSelect))
             {
+                var type = GetEntityType(_hoveringEntity);
                 if (_hoveringEntity.IsVehicle() && MarkerData.RepresentedBy.IsVehicle())
                 {
                     foreach (var ped in ((Vehicle)_hoveringEntity).Occupants)
                     {
-                        if (CurrentMission.Actors.Any(o => o.GetEntity().Handle.Value == ped.Handle.Value))
+                        var pedType = GetEntityType(ped);
+                        if (pedType == EntityType.NormalActor)
                         {
                             CurrentMission.Actors.First(o => o.GetEntity().Handle.Value == ped.Handle.Value)
                                 .SpawnInVehicle = false;
                         }
-                        else if (CurrentMission.Spawnpoints.Any(o => o.GetEntity().Handle.Value == ped.Handle.Value))
+                        else if (pedType == EntityType.Spawnpoint)
                         {
                             CurrentMission.Spawnpoints.First(o => o.GetEntity().Handle.Value == ped.Handle.Value)
                                 .SpawnInVehicle = false;
                         }
+                        else if (pedType == EntityType.ObjectiveActor)
+                        {
+                            ((SerializableActorObjective)CurrentMission.Objectives.First(o =>
+                            {
+                                var p = o as SerializableActorObjective;
+                                return p?.GetPed().Handle.Value == ped.Handle.Value;
+                            })).SpawnInVehicle = false;
+                        }
                     }
 
-                    CurrentMission.Vehicles.Remove(
-                        CurrentMission.Vehicles.FirstOrDefault(
-                            o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
-
+                    if (type == EntityType.NormalVehicle)
+                    {
+                        CurrentMission.Vehicles.Remove(
+                            CurrentMission.Vehicles.FirstOrDefault(
+                                o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
+                    }
+                    else if (type == EntityType.ObjectiveVehicle)
+                    {
+                        var myVeh = ((SerializableVehicleObjective) CurrentMission.Objectives.First(o =>
+                        {
+                            var p = o as SerializableVehicleObjective;
+                            return p?.GetVehicle().Handle.Value == _hoveringEntity.Handle.Value;
+                        }));
+                        CurrentMission.Objectives.Remove(myVeh);
+                    }
                     _hoveringEntity.Delete();
                     if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
                         MarkerData.RepresentedBy.Opacity = 1f;
@@ -825,8 +1099,7 @@ namespace ContentCreator.Editor
                         newPed.VehicleSeat = possibleSeat.Value;
                     }
                 }
-                else if(_hoveringEntity.IsPed() && MarkerData.RepresentedBy.IsPed() &&
-                    CurrentMission.Actors.Any(m => m.GetEntity().Handle.Value == _hoveringEntity.Handle.Value))
+                else if(MarkerData.RepresentedBy.IsPed() && type == EntityType.NormalActor)
                 {
                     CurrentMission.Actors.Remove(
                         CurrentMission.Actors.FirstOrDefault(
@@ -839,8 +1112,7 @@ namespace ContentCreator.Editor
                     RingData.Color = Color.MediumPurple;
                     _hoveringEntity = null;
                 }
-                else if (_hoveringEntity.IsPed() && MarkerData.RepresentedBy.IsPed() &&
-                    CurrentMission.Spawnpoints.Any(m => m.GetEntity().Handle.Value == _hoveringEntity.Handle.Value))
+                else if (MarkerData.RepresentedBy.IsPed() && type == EntityType.Spawnpoint)
                 {
                     CurrentMission.Spawnpoints.Remove(
                         CurrentMission.Spawnpoints.FirstOrDefault(
@@ -853,7 +1125,23 @@ namespace ContentCreator.Editor
                     RingData.Color = Color.MediumPurple;
                     _hoveringEntity = null;
                 }
-                else if (_hoveringEntity.IsObject() && MarkerData.RepresentedBy.IsObject())
+                else if (_hoveringEntity.IsPed() && MarkerData.RepresentedBy.IsPed() && type == EntityType.ObjectiveActor)
+                {
+                    CurrentMission.Objectives.Remove(
+                        CurrentMission.Objectives.FirstOrDefault(m =>
+                        {
+                            var o = m as SerializableActorObjective;
+                            return o?.GetPed().Handle.Value == _hoveringEntity.Handle.Value;
+                        }));
+
+                    _hoveringEntity.Delete();
+                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+                        MarkerData.RepresentedBy.Opacity = 1f;
+                    MarkerData.HeadingOffset = 0f;
+                    RingData.Color = Color.MediumPurple;
+                    _hoveringEntity = null;
+                }
+                else if (_hoveringEntity.IsObject() && MarkerData.RepresentedBy.IsObject() && PlacedWeaponHash == 0)
                 {
                     CurrentMission.Objects.Remove(
                         CurrentMission.Objects.FirstOrDefault(
@@ -866,18 +1154,31 @@ namespace ContentCreator.Editor
                     RingData.Color = Color.MediumPurple;
                     _hoveringEntity = null;
                 }
-                
+                else if (_hoveringEntity.IsObject() && MarkerData.RepresentedBy.IsObject() && PlacedWeaponHash != 0)
+                {
+                    CurrentMission.Pickups.Remove(
+                        CurrentMission.Pickups.FirstOrDefault(
+                            o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
+
+                    _hoveringEntity.Delete();
+                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+                        MarkerData.RepresentedBy.Opacity = 1f;
+                    MarkerData.HeadingOffset = 0f;
+                    RingData.Color = Color.MediumPurple;
+                    _hoveringEntity = null;
+                }
+
             }
             else if (_hoveringEntity != null && _hoveringEntity.IsValid() &&
                      Game.IsControlJustPressed(0, GameControl.Attack) && 
                      (MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid()) &&
                      _propertiesMenu == null)
             {
+                var type = GetEntityType(_hoveringEntity);
                 // TODO: Properties
-                if (_hoveringEntity.IsPed() && CurrentMission.Actors.Any(o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value))
+                if (type == EntityType.NormalActor)
                 {
-                    _menuPool.CloseAllMenus();
-                    Children.ForEach(x => x.Children.ForEach(n => n.Visible = false));
+                    CloseAllMenus();
 
                     DisableControlEnabling = true;
                     EnableBasicMenuControls = true;
@@ -898,10 +1199,9 @@ namespace ContentCreator.Editor
                     newMenu.Visible = true;
                     _propertiesMenu = newMenu;
                 }
-                else if (_hoveringEntity.IsPed() && CurrentMission.Spawnpoints.Any(o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value))
+                else if (type == EntityType.Spawnpoint)
                 {
-                    _menuPool.CloseAllMenus();
-                    Children.ForEach(x => x.Children.ForEach(n => n.Visible = false));
+                    CloseAllMenus();
 
                     DisableControlEnabling = true;
                     EnableBasicMenuControls = true;
@@ -922,10 +1222,35 @@ namespace ContentCreator.Editor
                     newMenu.Visible = true;
                     _propertiesMenu = newMenu;
                 }
-                else if (_hoveringEntity.IsVehicle())
+                else if (type == EntityType.ObjectiveActor)
                 {
-                    _menuPool.CloseAllMenus();
-                    Children.ForEach(x => x.Children.ForEach(n => n.Visible = false));
+                    CloseAllMenus();
+
+                    DisableControlEnabling = true;
+                    EnableBasicMenuControls = true;
+                    var newMenu = new ActorObjectivePropertiesMenu();
+                    var actor = CurrentMission.Objectives.FirstOrDefault(o =>
+                    {
+                        var act = o as SerializableActorObjective;
+                        return act?.GetPed().Handle.Value == _hoveringEntity.Handle.Value;
+                    });
+                    newMenu.BuildFor((SerializableActorObjective)actor);
+
+                    newMenu.OnMenuClose += sender =>
+                    {
+                        _missionMenu.Visible = true;
+                        menuDirty = true;
+                        RingData.Color = Color.Gray;
+                        DisableControlEnabling = false;
+                        EnableBasicMenuControls = false;
+                    };
+
+                    newMenu.Visible = true;
+                    _propertiesMenu = newMenu;
+                }
+                else if(type == EntityType.NormalVehicle)
+                {
+                    CloseAllMenus();
 
                     DisableControlEnabling = true;
                     EnableBasicMenuControls = true;
@@ -945,7 +1270,7 @@ namespace ContentCreator.Editor
                     newMenu.Visible = true;
                     _propertiesMenu = newMenu;
                 }
-                else if (_hoveringEntity.IsObject())
+                else if (type == EntityType.NormalObject)
                 {
                     //DisableControlEnabling = true;
                     //EnableBasicMenuControls = true;

@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Xml.Serialization;
 using ContentCreator.Editor.NestedMenus;
 using ContentCreator.SerializableData;
 using ContentCreator.SerializableData.Objectives;
@@ -44,8 +46,14 @@ namespace ContentCreator.Editor
                 {
                     GameFiber.StartNew(delegate
                     {
+                        Editor.DisableControlEnabling = true;
                         string path = Util.GetUserInput();
-                        if (string.IsNullOrEmpty(path)) return;
+                        if (string.IsNullOrEmpty(path))
+                        {
+                            Editor.DisableControlEnabling = false;
+                            return;
+                        }
+                        Editor.DisableControlEnabling = false;
                         LoadMission(path);
                     });
                 };
@@ -143,6 +151,7 @@ namespace ContentCreator.Editor
         public static bool IsPlacingObjective { get; set; }
         public static List<INestedMenu> Children;
         public static uint PlacedWeaponHash { get; set; }
+        public static int? ObjectiveMarkerId { get; set; }
         #endregion
 
         #region Private Variables
@@ -153,12 +162,9 @@ namespace ContentCreator.Editor
         private Entity _hoveringEntity;
         private UIMenu _placementMenu;
         private INestedMenu _propertiesMenu;
+        private SerializableMarker _selectedMarker;
         #endregion
-
-        #region Constants
         
-        #endregion
-
         private void EnterFreecam()
         {
             Camera.DeleteAllCameras();
@@ -185,7 +191,7 @@ namespace ContentCreator.Editor
             _mainMenu.RefreshIndex();
         }
 
-        public void LeaveEditor()
+        public void ClearCurrentMission()
         {
             if (CurrentMission != null)
             {
@@ -241,11 +247,19 @@ namespace ContentCreator.Editor
                     {
                         p.GetVehicle().Delete();
                     }
+                    var c = o as SerializablePickupObjective;
+                    if (c?.GetObject() != null && c.GetObject().IsValid())
+                    {
+                        c.GetObject().Delete();
+                    }
                 });
-
-                
+                CurrentMission = null;
             }
+        }
 
+        public void LeaveEditor()
+        {
+            ClearCurrentMission();
 
             IsInMainMenu = false;
             _menuPool.CloseAllMenus();
@@ -258,7 +272,6 @@ namespace ContentCreator.Editor
 
             NativeFunction.CallByHash<uint>(0x231C8F89D0539D8F, false, false);
 
-            CurrentMission = null;
             if (MainCamera != null)
                 MainCamera.Active = false;
             Game.LocalPlayer.Character.Opacity = 1f;
@@ -282,7 +295,171 @@ namespace ContentCreator.Editor
 
         public void LoadMission(string path)
         {
-            
+            if (!File.Exists(path) && File.Exists(path + ".xml"))
+                path += ".xml";
+            if (!File.Exists(path))
+            {
+                Game.DisplayNotification("File not found.");
+                return;
+            }
+
+            ClearCurrentMission();
+            var serializer = new XmlSerializer(typeof(MissionData));
+            MissionData tmpMiss = null;
+            using (var stream = File.OpenRead(path))
+                tmpMiss = (MissionData)serializer.Deserialize(stream);
+            GameFiber.StartNew(delegate
+            {
+                foreach (var vehicle in tmpMiss.Vehicles)
+                {
+                    var newv = new Vehicle(Util.RequestModel(vehicle.ModelHash), vehicle.Position)
+                    {
+                        PrimaryColor = Color.FromArgb((int)vehicle.PrimaryColor.X, (int)vehicle.PrimaryColor.Y,
+                            (int)vehicle.PrimaryColor.Z),
+                        SecondaryColor = Color.FromArgb((int)vehicle.SecondaryColor.X, (int)vehicle.SecondaryColor.Y,
+                            (int)vehicle.SecondaryColor.Z),
+                    };
+                    vehicle.SetEntity(newv);
+                }
+
+                foreach (var ped in tmpMiss.Actors)
+                {
+                    ped.SetEntity(new Ped(Util.RequestModel(ped.ModelHash), ped.Position, ped.Rotation.Yaw)
+                    {
+                        BlockPermanentEvents = true,
+                    });
+                }
+
+                foreach (var o in tmpMiss.Objects)
+                {
+                    var newo = new Object(o.ModelHash, o.Position);
+                    newo.Position = o.Position;
+                    o.SetEntity(newo);
+                }
+
+                foreach (var spawnpoint in tmpMiss.Spawnpoints)
+                {
+                    spawnpoint.SetEntity(new Ped(spawnpoint.ModelHash, spawnpoint.Position, spawnpoint.Rotation.Yaw)
+                    {
+                        BlockPermanentEvents = true,
+                    });
+                }
+
+                foreach (var pickup in tmpMiss.Pickups)
+                {
+                    var tmpObject = World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", pickup.ModelHash,
+                                                                                                 9999, pickup.Position.X, pickup.Position.Y, pickup.Position.Z,
+                                                                                                 true, 3f));
+                    tmpObject.Rotation = pickup.Rotation;
+                    tmpObject.Position = pickup.Position;
+                    tmpObject.IsPositionFrozen = true;
+                    pickup.SetEntity(tmpObject);
+                }
+
+                foreach (var ped in tmpMiss.Objectives.OfType<SerializableActorObjective>())
+                {
+                    ped.SetPed(new Ped(Util.RequestModel(ped.ModelHash), ped.Position, ped.Rotation.Yaw)
+                    {
+                        BlockPermanentEvents = true,
+                    });
+                }
+
+                foreach (var vehicle in tmpMiss.Objectives.OfType<SerializableVehicleObjective>())
+                {
+                    var newv = new Vehicle(Util.RequestModel(vehicle.ModelHash), vehicle.Position)
+                    {
+                        PrimaryColor = Color.FromArgb((int)vehicle.PrimaryColor.X, (int)vehicle.PrimaryColor.Y,
+                            (int)vehicle.PrimaryColor.Z),
+                        SecondaryColor = Color.FromArgb((int)vehicle.SecondaryColor.X, (int)vehicle.SecondaryColor.Y,
+                            (int)vehicle.SecondaryColor.Z),
+                    };
+                    vehicle.SetVehicle(newv);
+                }
+
+                foreach (var pickup in tmpMiss.Objectives.OfType<SerializablePickupObjective>())
+                {
+                    var tmpObject = World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", pickup.ModelHash,
+                                                                                                 9999, pickup.Position.X, pickup.Position.Y, pickup.Position.Z,
+                                                                                                 true, 3f));
+                    tmpObject.Rotation = pickup.Rotation;
+                    tmpObject.Position = pickup.Position;
+                    tmpObject.IsPositionFrozen = true;
+                    pickup.SetObject(tmpObject);
+                }
+            });
+            CurrentMission = tmpMiss;
+
+            EnterFreecam();
+            menuDirty = true;
+        }
+
+        public void SaveMission(MissionData mission, string path)
+        {
+            foreach (var ped in mission.Actors)
+            {
+                ped.Position = ped.GetEntity().Position;
+                ped.Rotation = ped.GetEntity().Rotation;
+                ped.ModelHash = ped.GetEntity().Model.Hash;
+            }
+
+            foreach (var ped in mission.Objects)
+            {
+                ped.Position = ped.GetEntity().Position;
+                ped.Rotation = ped.GetEntity().Rotation;
+                ped.ModelHash = ped.GetEntity().Model.Hash;
+            }
+
+            foreach (var ped in mission.Spawnpoints)
+            {
+                ped.Position = ped.GetEntity().Position;
+                ped.Rotation = ped.GetEntity().Rotation;
+                ped.ModelHash = ped.GetEntity().Model.Hash;
+            }
+
+            foreach (var ped in mission.Vehicles)
+            {
+                ped.Position = ped.GetEntity().Position;
+                ped.Rotation = ped.GetEntity().Rotation;
+                ped.ModelHash = ped.GetEntity().Model.Hash;
+
+                var veh = (Vehicle)ped.GetEntity();
+                ped.PrimaryColor = new Vector3(veh.PrimaryColor.R, veh.PrimaryColor.G, veh.PrimaryColor.B);
+                ped.SecondaryColor = new Vector3(veh.SecondaryColor.R, veh.SecondaryColor.G, veh.SecondaryColor.B);
+            }
+
+            foreach (var ped in mission.Pickups)
+            {
+                ped.Position = ped.GetEntity().Position;
+                ped.Rotation = ped.GetEntity().Rotation;
+            }
+
+            foreach (var ped in mission.Objectives.OfType<SerializableActorObjective>())
+            {
+                ped.Position = ped.GetPed().Position;
+                ped.Rotation = ped.GetPed().Rotation;
+                ped.ModelHash = ped.GetPed().Model.Hash;
+            }
+
+            foreach (var ped in mission.Objectives.OfType<SerializableVehicleObjective>())
+            {
+                var veh = ped.GetVehicle();
+                ped.Position = veh.Position;
+                ped.Rotation = veh.Rotation;
+                ped.ModelHash = veh.Model.Hash;
+                ped.PrimaryColor = new Vector3(veh.PrimaryColor.R, veh.PrimaryColor.G, veh.PrimaryColor.B);
+                ped.SecondaryColor = new Vector3(veh.SecondaryColor.R, veh.SecondaryColor.G, veh.SecondaryColor.B);
+            }
+
+            if (!path.EndsWith(".xml"))
+                path += ".xml";
+
+            if(File.Exists(path))
+                File.Delete(path);
+
+            XmlSerializer serializer = new XmlSerializer(typeof(MissionData));
+            using(var stream = File.OpenWrite(path))
+                serializer.Serialize(stream, mission);
+            Game.DisplayNotification("Saved mission as ~h~" + path + "~h~!");
         }
 
         private void DisplayMarker(Vector3 pos, Vector3 directionalVector)
@@ -305,6 +482,12 @@ namespace ContentCreator.Editor
                 NativeFunction.CallByName<uint>("DRAW_MARKER", (int)RingData.Type, pos2.X, pos2.Y, pos2.Z, 0f, 0f, 0f,
                     0f, 0f, RingData.Heading, RingData.Radius, RingData.Radius, 0.75f, (int)RingData.Color.R, (int)RingData.Color.G, (int)RingData.Color.B, (int)RingData.Color.A, false, false,
                     2, false, false, false, false);
+            }
+
+            if (ObjectiveMarkerId.HasValue)
+            {
+                Util.DrawMarker(ObjectiveMarkerId.Value, pos + new Vector3(0,0,MarkerData.HeightOffset), new Vector3(), new Vector3(1,1,1),
+                        Color.FromArgb(100, Color.Yellow.R, Color.Yellow.G, Color.Yellow.B));
             }
         }
 
@@ -330,6 +513,26 @@ namespace ContentCreator.Editor
                 _menuPool.Add(nestMenu);
                 Children.Add(nestMenu);
                 _placementMenu = nestMenu;
+            }
+
+            {
+                var item = new NativeMenuItem("Save Mission");
+                _missionMenu.AddItem(item);
+                item.Activated += (sender, selectedItem) =>
+                {
+                    GameFiber.StartNew(delegate
+                    {
+                        DisableControlEnabling = true;
+                        string path = Util.GetUserInput();
+                        if (string.IsNullOrEmpty(path))
+                        {
+                            DisableControlEnabling = false;
+                            return;
+                        }
+                        DisableControlEnabling = false;
+                        SaveMission(CurrentMission, path);
+                    });
+                };
             }
 
             {
@@ -359,7 +562,7 @@ namespace ContentCreator.Editor
             Spawnpoint
         }
 
-        public EntityType GetEntityType(Entity ent)
+        public static EntityType GetEntityType(Entity ent)
         {
             if (ent.IsPed())
             {
@@ -391,6 +594,12 @@ namespace ContentCreator.Editor
                     return EntityType.NormalObject;
                 if(CurrentMission.Pickups.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
                     return EntityType.NormalPickup;
+                if(CurrentMission.Objectives.Any(o =>
+                {
+                    var d = o as SerializablePickupObjective;
+                    return d?.GetObject().Handle.Value == ent.Handle.Value;
+                }))
+                    return EntityType.ObjectivePickup;
             }
             return EntityType.None;
         }
@@ -449,7 +658,7 @@ namespace ContentCreator.Editor
                 }
 
                 else if (MarkerData.RepresentedBy is Object && ent.IsObject() &&
-                    type == EntityType.NormalObject)
+                    type == EntityType.NormalObject && PlacedWeaponHash == 0)
                 {
                     MarkerData.RepresentedBy.Opacity = 0f;
                     MarkerData.HeadingOffset = 45f;
@@ -466,24 +675,61 @@ namespace ContentCreator.Editor
             }
         }
 
-        private void CheckForPickup(Vector3 pos)
+        private void CheckForPickup(Vector3 pos, bool entNull)
         {
-            if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() && PlacedWeaponHash != 0)
+            if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() && (PlacedWeaponHash != 0 || ObjectiveMarkerId.HasValue))
             {
                 var threshold = 1.5f;
+                if (!IsPlacingObjective && !ObjectiveMarkerId.HasValue)
                 foreach (SerializablePickup pickup in CurrentMission.Pickups)
                 {
-                    if((pickup.GetEntity().Position - pos).Length() > threshold) continue;
+                    if(pickup.GetEntity() == null || !pickup.GetEntity().IsValid()) continue;
+                    if ((pickup.GetEntity().Position - pos).Length() > threshold) continue;
                     MarkerData.RepresentedBy.Opacity = 0f;
                     MarkerData.HeadingOffset = 45f;
                     RingData.Color = Color.Red;
                     _hoveringEntity = pickup.GetEntity();
                     return;
                 }
+                if(IsPlacingObjective && !ObjectiveMarkerId.HasValue)
+                foreach (SerializablePickupObjective pickup in CurrentMission.Objectives.Where(obj => obj is SerializablePickupObjective))
+                {
+                    if (pickup.GetObject() == null || !pickup.GetObject().IsValid()) continue;
+                    if ((pickup.GetObject().Position - pos).Length() > threshold) continue;
+                    MarkerData.RepresentedBy.Opacity = 0f;
+                    MarkerData.HeadingOffset = 45f;
+                    RingData.Color = Color.Red;
+                    _hoveringEntity = pickup.GetObject();
+                    return;
+                }
+
+                
+                if (IsPlacingObjective && ObjectiveMarkerId.HasValue)
+                    foreach (var mark in CurrentMission.Objectives.OfType<SerializableMarker>())
+                {
+                    
+                    if ((mark.Position - pos).Length() > threshold) continue;
+                    MarkerData.RepresentedBy.Opacity = 0f;
+                    MarkerData.HeadingOffset = 45f;
+                    RingData.Color = Color.Red;
+                    _selectedMarker = mark;
+                    return;
+                }
+
+
                 MarkerData.RepresentedBy.Opacity = 1f;
                 MarkerData.HeadingOffset = 0f;
                 RingData.Color = Color.MediumPurple;
                 _hoveringEntity = null;
+                _selectedMarker = null;
+            }
+            else if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() && entNull)
+            {
+                MarkerData.RepresentedBy.Opacity = 1f;
+                MarkerData.HeadingOffset = 0f;
+                RingData.Color = Color.MediumPurple;
+                _hoveringEntity = null;
+                _selectedMarker = null;
             }
         }
 
@@ -507,18 +753,41 @@ namespace ContentCreator.Editor
             }
         }
 
-        private void CheckForPickupProperty(Vector3 pos)
+        private void CheckForPickupProperty(Vector3 pos, bool entNull)
         {
             var threshold = 1.5f;
             foreach (SerializablePickup pickup in CurrentMission.Pickups)
             {
+                if (pickup.GetEntity() == null || !pickup.GetEntity().IsValid()) continue;
                 if ((pickup.GetEntity().Position - pos).Length() > threshold) continue;
                 RingData.Color = Color.Yellow;
                 _hoveringEntity = pickup.GetEntity();
                 return;
             }
-            RingData.Color = Color.Gray;
-            _hoveringEntity = null;
+
+            foreach (SerializablePickupObjective objective in CurrentMission.Objectives.OfType<SerializablePickupObjective>())
+            {
+                if (objective.GetObject() == null || !objective.GetObject().IsValid()) continue;
+                if ((objective.GetObject().Position - pos).Length() > threshold) continue;
+                RingData.Color = Color.Yellow;
+                _hoveringEntity = objective.GetObject();
+                return;
+            }
+
+            foreach (var mark in CurrentMission.Objectives.OfType<SerializableMarker>())
+            {
+                if ((mark.Position - pos).Length() > threshold) continue;
+                RingData.Color = Color.Yellow;
+                _selectedMarker = mark;
+                return;
+            }
+
+            if (entNull)
+            {
+                RingData.Color = Color.Gray;
+                _hoveringEntity = null;
+                _selectedMarker = null;
+            }
         }
 
         private void EnableControls()
@@ -582,6 +851,7 @@ namespace ContentCreator.Editor
         {
             var tmpPed = new Ped(model, pos, heading);
             tmpPed.IsPositionFrozen = false;
+            tmpPed.BlockPermanentEvents = true;
 
             var tmpObj = new SerializablePed();
             tmpObj.SetEntity(tmpPed);
@@ -602,6 +872,7 @@ namespace ContentCreator.Editor
         {
             var tmpPed = new Ped(model, pos, heading);
             tmpPed.IsPositionFrozen = false;
+            tmpPed.BlockPermanentEvents = true;
 
             var tmpObj = new SerializableActorObjective();
             tmpObj.SetPed(tmpPed);
@@ -640,6 +911,7 @@ namespace ContentCreator.Editor
         {
             var tmpPed = new Ped(model, pos, heading);
             tmpPed.IsPositionFrozen = true;
+            tmpPed.BlockPermanentEvents = true;
 
             var tmpObj = new SerializableSpawnpoint();
             tmpObj.SetEntity(tmpPed);
@@ -678,7 +950,6 @@ namespace ContentCreator.Editor
             var tmpObject = new Object(model, pos);
             tmpObject.Rotation = rot;
             tmpObject.Position = pos;
-            tmpObject.IsPositionFrozen = false;
             var tmpObj = new SerializableObject();
             tmpObj.SetEntity(tmpObject);
             tmpObj.SpawnAfter = 0;
@@ -700,11 +971,44 @@ namespace ContentCreator.Editor
             tmpObj.SpawnAfter = 0;
             tmpObj.RemoveAfter = 0;
             tmpObj.Respawn = false;
+            tmpObj.Ammo = 9999;
+            tmpObj.ModelHash = weaponHash;
             CurrentMission.Pickups.Add(tmpObj);
             return tmpObj;
         }
 
+        public SerializablePickupObjective CreatePickupObjective(uint weaponHash, Vector3 pos, Rotator rot)
+        {
+            var tmpObject = World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", weaponHash,
+                                                                                                 9999, pos.X, pos.Y, pos.Z,
+                                                                                                 true, 3f));
+            tmpObject.Rotation = rot;
+            tmpObject.Position = pos;
+            tmpObject.IsPositionFrozen = true;
+            var tmpObj = new SerializablePickupObjective();
+            tmpObj.SetObject(tmpObject);
+            tmpObj.SpawnAfter = 0;
+            tmpObj.ActivateAfter = 1;
+            tmpObj.Respawn = false;
+            tmpObj.Ammo = 9999;
+            tmpObj.ModelHash = weaponHash;
+            CurrentMission.Objectives.Add(tmpObj);
+            return tmpObj;
+        }
 
+        public SerializableMarker CreateCheckpoint(Vector3 pos, Color col, Vector3 scale)
+        {
+            var tmpObj = new SerializableMarker();
+            tmpObj.SpawnAfter = 0;
+            tmpObj.ActivateAfter = 1;
+            tmpObj.Alpha = col.A;
+            tmpObj.Color = new Vector3(col.R, col.G, col.B);
+            tmpObj.Scale = scale;
+            tmpObj.Position = pos;
+            tmpObj.Type = ObjectiveMarkerId.Value;
+            CurrentMission.Objectives.Add(tmpObj);
+            return tmpObj;
+        }
 
         public void Tick(GraphicsEventArgs canvas)
         {
@@ -726,46 +1030,62 @@ namespace ContentCreator.Editor
                     ((UIMenu)_propertiesMenu).Draw();
                 }
             }
-
             if (IsInMainMenu)
             {
                 NativeFunction.CallByName<uint>("HIDE_HUD_AND_RADAR_THIS_FRAME");
             }
 
             if (!IsInEditor) return;
-            NativeFunction.CallByName<uint>("HIDE_HUD_AND_RADAR_THIS_FRAME");
             NativeFunction.CallByName<uint>("DISABLE_CONTROL_ACTION", 0, (int)GameControl.FrontendPauseAlternate);
 
             NativeFunction.CallByHash<uint>(0x231C8F89D0539D8F, BigMinimap, false);
-
             foreach (var objective in CurrentMission.Objectives)
             {
                 //TODO: Get model size
-
                 if (objective is SerializableActorObjective)
                 {
                     var ped = ((SerializableActorObjective) objective).GetPed();
-                    Util.DrawMarker(0, ped.Position + new Vector3(0, 0, 2f), new Vector3(ped.Rotation.Pitch, ped.Rotation.Roll, ped.Rotation.Yaw), new Vector3(1f, 1f, 1f), Color.FromArgb(100, 255, 10, 10) );
+                    if (ped == null) continue;
+                    Util.DrawMarker(0, ped.Position + new Vector3(0, 0, 2f),
+                        new Vector3(ped.Rotation.Pitch, ped.Rotation.Roll, ped.Rotation.Yaw),
+                        new Vector3(1f, 1f, 1f), Color.FromArgb(100, 255, 10, 10) );
                 }
                 else if (objective is SerializableVehicleObjective)
                 {
                     var ped = ((SerializableVehicleObjective)objective).GetVehicle();
-                    Util.DrawMarker(0, ped.Position + new Vector3(0, 0, 2f), new Vector3(ped.Rotation.Pitch, ped.Rotation.Roll, ped.Rotation.Yaw), new Vector3(1f, 1f, 1f), Color.FromArgb(100, 255, 10, 10));
+                    if (ped == null) continue;
+                    Util.DrawMarker(0, ped.Position + new Vector3(0, 0, 2f),
+                        new Vector3(ped.Rotation.Pitch, ped.Rotation.Roll, ped.Rotation.Yaw),
+                        new Vector3(1f, 1f, 1f), Color.FromArgb(100, 255, 10, 10));
+                }
+                
+                else if (objective is SerializablePickupObjective)
+                {
+                    var pickup = ((SerializablePickupObjective) objective).GetObject();
+                    if (pickup == null) continue;
+                    Util.DrawMarker(1, pickup.Position - new Vector3(0, 0, 1f),
+                    new Vector3(pickup.Rotation.Pitch, pickup.Rotation.Roll, pickup.Rotation.Yaw),
+                    new Vector3(1f, 1f, 1f), Color.FromArgb(100, 255, 10, 10));
+                }
+
+                else if (objective is SerializableMarker)
+                {
+                    var obj = ((SerializableMarker) objective);
+                    Util.DrawMarker(obj.Type, obj.Position, new Vector3(), obj.Scale,
+                        Color.FromArgb(obj.Alpha, (int)obj.Color.X, (int)obj.Color.Y, (int)obj.Color.Z));
                 }
             }
-
             foreach (var pickup in CurrentMission.Pickups)
             {
+                if(pickup.GetEntity() == null) continue;
                 Util.DrawMarker(1, pickup.GetEntity().Position - new Vector3(0,0,1f),
                     new Vector3(pickup.GetEntity().Rotation.Pitch, pickup.GetEntity().Rotation.Roll, pickup.GetEntity().Rotation.Yaw),
                     new Vector3(1f, 1f, 1f), Color.FromArgb(100, 10, 100, 255));
             }
 
-
             if (IsInFreecam)
             {
                 var markerPos = Util.RaycastEverything(new Vector2(0, 0), MainCamera, MarkerData.RepresentedBy ?? _mainObject);
-
                 #region Camera Movement
 
                 if (!DisableControlEnabling)
@@ -880,17 +1200,14 @@ namespace ContentCreator.Editor
 
                 if (MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid())
                 {
-                    if (ent == null)
-                        CheckForPickupProperty(markerPos);
-                    else
-                        CheckForProperty(ent);
+                    CheckForProperty(ent);
+                    CheckForPickupProperty(markerPos, ent==null);
                 }
                 else
                 {
-                    if(ent == null)
-                        CheckForPickup(markerPos);
-                    else
-                        CheckForIntersection(ent);
+                    
+                    CheckForIntersection(ent);
+                    CheckForPickup(markerPos, ent == null);
                 }
                 
                 DisplayMarker(markerPos, dir);
@@ -934,7 +1251,6 @@ namespace ContentCreator.Editor
                     }
                 }
             }
-
             if (Game.IsControlJustPressed(0, GameControl.FrontendPause) && IsInFreecam)
             {
                 GameFiber.StartNew(delegate
@@ -965,7 +1281,6 @@ namespace ContentCreator.Editor
                     Game.FadeScreenIn(800);
                 });
             }
-
             #region Marker Spawning/Deletion
 
             if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() &&
@@ -1023,151 +1338,29 @@ namespace ContentCreator.Editor
                     CreatePedObjective(MarkerData.RepresentedBy.Model, MarkerData.RepresentedBy.Position - new Vector3(0, 0, 1f), MarkerData.RepresentedBy.Heading);
                 }
 
-                else if (MarkerData.RepresentedBy is Object && PlacedWeaponHash == 0)
+                else if (MarkerData.RepresentedBy is Object && PlacedWeaponHash == 0 && !IsPlacingObjective && !ObjectiveMarkerId.HasValue)
                 {
                     CreateObject(MarkerData.RepresentedBy.Model, MarkerData.RepresentedBy.Position,
                         MarkerData.RepresentedBy.Rotation);
                 }
 
-                else if (MarkerData.RepresentedBy is Object && PlacedWeaponHash != 0)
+                else if (MarkerData.RepresentedBy is Object && PlacedWeaponHash != 0 && !IsPlacingObjective && !ObjectiveMarkerId.HasValue)
                 {
                     CreatePickup(PlacedWeaponHash, MarkerData.RepresentedBy.Position,
                         MarkerData.RepresentedBy.Rotation);
                 }
-            }
-            else if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() && 
-                    _hoveringEntity != null && _hoveringEntity.IsValid() &&
-                     Game.IsControlJustPressed(0, GameControl.CellphoneSelect))
-            {
-                var type = GetEntityType(_hoveringEntity);
-                if (_hoveringEntity.IsVehicle() && MarkerData.RepresentedBy.IsVehicle())
-                {
-                    foreach (var ped in ((Vehicle)_hoveringEntity).Occupants)
-                    {
-                        var pedType = GetEntityType(ped);
-                        if (pedType == EntityType.NormalActor)
-                        {
-                            CurrentMission.Actors.First(o => o.GetEntity().Handle.Value == ped.Handle.Value)
-                                .SpawnInVehicle = false;
-                        }
-                        else if (pedType == EntityType.Spawnpoint)
-                        {
-                            CurrentMission.Spawnpoints.First(o => o.GetEntity().Handle.Value == ped.Handle.Value)
-                                .SpawnInVehicle = false;
-                        }
-                        else if (pedType == EntityType.ObjectiveActor)
-                        {
-                            ((SerializableActorObjective)CurrentMission.Objectives.First(o =>
-                            {
-                                var p = o as SerializableActorObjective;
-                                return p?.GetPed().Handle.Value == ped.Handle.Value;
-                            })).SpawnInVehicle = false;
-                        }
-                    }
 
-                    if (type == EntityType.NormalVehicle)
-                    {
-                        CurrentMission.Vehicles.Remove(
-                            CurrentMission.Vehicles.FirstOrDefault(
-                                o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
-                    }
-                    else if (type == EntityType.ObjectiveVehicle)
-                    {
-                        var myVeh = ((SerializableVehicleObjective) CurrentMission.Objectives.First(o =>
-                        {
-                            var p = o as SerializableVehicleObjective;
-                            return p?.GetVehicle().Handle.Value == _hoveringEntity.Handle.Value;
-                        }));
-                        CurrentMission.Objectives.Remove(myVeh);
-                    }
-                    _hoveringEntity.Delete();
-                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
-                        MarkerData.RepresentedBy.Opacity = 1f;
-                    MarkerData.HeadingOffset = 0f;
-                    RingData.Color = Color.MediumPurple;
-                    _hoveringEntity = null;
-                }
-                else if (_hoveringEntity.IsVehicle() && MarkerData.RepresentedBy.IsPed())
+                else if (MarkerData.RepresentedBy is Object && PlacedWeaponHash != 0 && IsPlacingObjective && !ObjectiveMarkerId.HasValue)
                 {
-                    int? possibleSeat = ((Vehicle) _hoveringEntity).GetFreeSeatIndex();
-                    if (possibleSeat.HasValue)
-                    {
-                        var newPed = CreatePed(MarkerData.RepresentedBy.Model, MarkerData.RepresentedBy.Position,
-                            MarkerData.RepresentedBy.Heading);
-                        ((Ped) newPed.GetEntity()).WarpIntoVehicle((Vehicle)_hoveringEntity, possibleSeat.Value);
-                        newPed.SpawnInVehicle = true;
-                        newPed.VehicleSeat = possibleSeat.Value;
-                    }
-                }
-                else if(MarkerData.RepresentedBy.IsPed() && type == EntityType.NormalActor)
-                {
-                    CurrentMission.Actors.Remove(
-                        CurrentMission.Actors.FirstOrDefault(
-                            o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
-
-                    _hoveringEntity.Delete();
-                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
-                        MarkerData.RepresentedBy.Opacity = 1f;
-                    MarkerData.HeadingOffset = 0f;
-                    RingData.Color = Color.MediumPurple;
-                    _hoveringEntity = null;
-                }
-                else if (MarkerData.RepresentedBy.IsPed() && type == EntityType.Spawnpoint)
-                {
-                    CurrentMission.Spawnpoints.Remove(
-                        CurrentMission.Spawnpoints.FirstOrDefault(
-                            o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
-
-                    _hoveringEntity.Delete();
-                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
-                        MarkerData.RepresentedBy.Opacity = 1f;
-                    MarkerData.HeadingOffset = 0f;
-                    RingData.Color = Color.MediumPurple;
-                    _hoveringEntity = null;
-                }
-                else if (_hoveringEntity.IsPed() && MarkerData.RepresentedBy.IsPed() && type == EntityType.ObjectiveActor)
-                {
-                    CurrentMission.Objectives.Remove(
-                        CurrentMission.Objectives.FirstOrDefault(m =>
-                        {
-                            var o = m as SerializableActorObjective;
-                            return o?.GetPed().Handle.Value == _hoveringEntity.Handle.Value;
-                        }));
-
-                    _hoveringEntity.Delete();
-                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
-                        MarkerData.RepresentedBy.Opacity = 1f;
-                    MarkerData.HeadingOffset = 0f;
-                    RingData.Color = Color.MediumPurple;
-                    _hoveringEntity = null;
-                }
-                else if (_hoveringEntity.IsObject() && MarkerData.RepresentedBy.IsObject() && PlacedWeaponHash == 0)
-                {
-                    CurrentMission.Objects.Remove(
-                        CurrentMission.Objects.FirstOrDefault(
-                            o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
-
-                    _hoveringEntity.Delete();
-                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
-                        MarkerData.RepresentedBy.Opacity = 1f;
-                    MarkerData.HeadingOffset = 0f;
-                    RingData.Color = Color.MediumPurple;
-                    _hoveringEntity = null;
-                }
-                else if (_hoveringEntity.IsObject() && MarkerData.RepresentedBy.IsObject() && PlacedWeaponHash != 0)
-                {
-                    CurrentMission.Pickups.Remove(
-                        CurrentMission.Pickups.FirstOrDefault(
-                            o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
-
-                    _hoveringEntity.Delete();
-                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
-                        MarkerData.RepresentedBy.Opacity = 1f;
-                    MarkerData.HeadingOffset = 0f;
-                    RingData.Color = Color.MediumPurple;
-                    _hoveringEntity = null;
+                    CreatePickupObjective(PlacedWeaponHash, MarkerData.RepresentedBy.Position,
+                        MarkerData.RepresentedBy.Rotation);
                 }
 
+                else if (MarkerData.RepresentedBy is Object && PlacedWeaponHash == 0 && IsPlacingObjective && ObjectiveMarkerId.HasValue && _selectedMarker == null)
+                {
+                    CreateCheckpoint(MarkerData.RepresentedBy.Position + new Vector3(0,0,MarkerData.HeightOffset),
+                        Color.FromArgb(100, Color.Yellow.R, Color.Yellow.G, Color.Yellow.B), new Vector3(1, 1, 1));
+                }
             }
             else if (_hoveringEntity != null && _hoveringEntity.IsValid() &&
                      Game.IsControlJustPressed(0, GameControl.Attack) && 
@@ -1270,13 +1463,280 @@ namespace ContentCreator.Editor
                     newMenu.Visible = true;
                     _propertiesMenu = newMenu;
                 }
+                else if (type == EntityType.ObjectiveVehicle)
+                {
+                    CloseAllMenus();
+
+                    DisableControlEnabling = true;
+                    EnableBasicMenuControls = true;
+                    var newMenu = new VehicleObjectivePropertiesMenu();
+                    var actor = CurrentMission.Objectives.OfType<SerializableVehicleObjective>()
+                        .FirstOrDefault(o => o.GetVehicle().Handle.Value == _hoveringEntity.Handle.Value);
+                    newMenu.BuildFor(actor);
+
+                    newMenu.OnMenuClose += sender =>
+                    {
+                        _missionMenu.Visible = true;
+                        menuDirty = true;
+                        RingData.Color = Color.Gray;
+                        DisableControlEnabling = false;
+                        EnableBasicMenuControls = false;
+                    };
+
+                    newMenu.Visible = true;
+                    _propertiesMenu = newMenu;
+                }
                 else if (type == EntityType.NormalObject)
                 {
-                    //DisableControlEnabling = true;
-                    //EnableBasicMenuControls = true;
+                    CloseAllMenus();
+
+                    DisableControlEnabling = true;
+                    EnableBasicMenuControls = true;
+                    var newMenu = new ObjectPropertiesMenu();
+                    var actor = CurrentMission.Objects.FirstOrDefault(o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value);
+                    newMenu.BuildFor(actor);
+
+                    newMenu.OnMenuClose += sender =>
+                    {
+                        _missionMenu.Visible = true;
+                        menuDirty = true;
+                        RingData.Color = Color.Gray;
+                        DisableControlEnabling = false;
+                        EnableBasicMenuControls = false;
+                    };
+
+                    newMenu.Visible = true;
+                    _propertiesMenu = newMenu;
+                }
+                else if (type == EntityType.NormalPickup)
+                {
+                    CloseAllMenus();
+
+                    DisableControlEnabling = true;
+                    EnableBasicMenuControls = true;
+                    var newMenu = new PickupPropertiesMenu();
+                    var actor = CurrentMission.Pickups.FirstOrDefault(o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value);
+                    newMenu.BuildFor(actor);
+
+                    newMenu.OnMenuClose += sender =>
+                    {
+                        _missionMenu.Visible = true;
+                        menuDirty = true;
+                        RingData.Color = Color.Gray;
+                        DisableControlEnabling = false;
+                        EnableBasicMenuControls = false;
+                    };
+
+                    newMenu.Visible = true;
+                    _propertiesMenu = newMenu;
+                }
+                else if (type == EntityType.ObjectivePickup)
+                {
+                    CloseAllMenus();
+
+                    DisableControlEnabling = true;
+                    EnableBasicMenuControls = true;
+                    var newMenu = new PickupObjectivePropertiesMenu();
+                    var actor = CurrentMission.Objectives.OfType<SerializablePickupObjective>()
+                        .FirstOrDefault(o => o.GetObject().Handle.Value == _hoveringEntity.Handle.Value);
+                    newMenu.BuildFor(actor);
+
+                    newMenu.OnMenuClose += sender =>
+                    {
+                        _missionMenu.Visible = true;
+                        menuDirty = true;
+                        RingData.Color = Color.Gray;
+                        DisableControlEnabling = false;
+                        EnableBasicMenuControls = false;
+                    };
+
+                    newMenu.Visible = true;
+                    _propertiesMenu = newMenu;
                 }
             }
-        
+            else if (_selectedMarker != null &&
+                     Game.IsControlJustPressed(0, GameControl.Attack) &&
+                     (MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid()) &&
+                     _propertiesMenu == null)
+            {
+                CloseAllMenus();
+
+                DisableControlEnabling = true;
+                EnableBasicMenuControls = true;
+                var newMenu = new MarkerPropertiesMenu();
+                newMenu.BuildFor(_selectedMarker);
+
+                newMenu.OnMenuClose += sender =>
+                {
+                    _missionMenu.Visible = true;
+                    menuDirty = true;
+                    RingData.Color = Color.Gray;
+                    DisableControlEnabling = false;
+                    EnableBasicMenuControls = false;
+                };
+
+                newMenu.Visible = true;
+                _propertiesMenu = newMenu;
+            }
+            else if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() &&
+                     _hoveringEntity != null && _hoveringEntity.IsValid() &&
+                     Game.IsControlJustPressed(0, GameControl.CellphoneSelect))
+            {
+                var type = GetEntityType(_hoveringEntity);
+                if (_hoveringEntity.IsVehicle() && MarkerData.RepresentedBy.IsVehicle())
+                {
+                    foreach (var ped in ((Vehicle) _hoveringEntity).Occupants)
+                    {
+                        var pedType = GetEntityType(ped);
+                        if (pedType == EntityType.NormalActor)
+                        {
+                            CurrentMission.Actors.First(o => o.GetEntity().Handle.Value == ped.Handle.Value)
+                                .SpawnInVehicle = false;
+                        }
+                        else if (pedType == EntityType.Spawnpoint)
+                        {
+                            CurrentMission.Spawnpoints.First(o => o.GetEntity().Handle.Value == ped.Handle.Value)
+                                .SpawnInVehicle = false;
+                        }
+                        else if (pedType == EntityType.ObjectiveActor)
+                        {
+                            ((SerializableActorObjective) CurrentMission.Objectives.First(o =>
+                            {
+                                var p = o as SerializableActorObjective;
+                                return p?.GetPed().Handle.Value == ped.Handle.Value;
+                            })).SpawnInVehicle = false;
+                        }
+                    }
+
+                    if (type == EntityType.NormalVehicle)
+                    {
+                        CurrentMission.Vehicles.Remove(
+                            CurrentMission.Vehicles.FirstOrDefault(
+                                o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
+                    }
+                    else if (type == EntityType.ObjectiveVehicle)
+                    {
+                        var myVeh = ((SerializableVehicleObjective) CurrentMission.Objectives.First(o =>
+                        {
+                            var p = o as SerializableVehicleObjective;
+                            return p?.GetVehicle().Handle.Value == _hoveringEntity.Handle.Value;
+                        }));
+                        CurrentMission.Objectives.Remove(myVeh);
+                    }
+                    _hoveringEntity.Delete();
+                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+                        MarkerData.RepresentedBy.Opacity = 1f;
+                    MarkerData.HeadingOffset = 0f;
+                    RingData.Color = Color.MediumPurple;
+                    _hoveringEntity = null;
+                }
+                else if (_hoveringEntity.IsVehicle() && MarkerData.RepresentedBy.IsPed())
+                {
+                    int? possibleSeat = ((Vehicle) _hoveringEntity).GetFreeSeatIndex();
+                    if (possibleSeat.HasValue)
+                    {
+                        var newPed = CreatePed(MarkerData.RepresentedBy.Model, MarkerData.RepresentedBy.Position,
+                            MarkerData.RepresentedBy.Heading);
+                        ((Ped) newPed.GetEntity()).WarpIntoVehicle((Vehicle) _hoveringEntity, possibleSeat.Value);
+                        newPed.SpawnInVehicle = true;
+                        newPed.VehicleSeat = possibleSeat.Value;
+                    }
+                }
+                else if (MarkerData.RepresentedBy.IsPed() && type == EntityType.NormalActor)
+                {
+                    CurrentMission.Actors.Remove(
+                        CurrentMission.Actors.FirstOrDefault(
+                            o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
+
+                    _hoveringEntity.Delete();
+                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+                        MarkerData.RepresentedBy.Opacity = 1f;
+                    MarkerData.HeadingOffset = 0f;
+                    RingData.Color = Color.MediumPurple;
+                    _hoveringEntity = null;
+                }
+                else if (MarkerData.RepresentedBy.IsPed() && type == EntityType.Spawnpoint)
+                {
+                    CurrentMission.Spawnpoints.Remove(
+                        CurrentMission.Spawnpoints.FirstOrDefault(
+                            o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
+
+                    _hoveringEntity.Delete();
+                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+                        MarkerData.RepresentedBy.Opacity = 1f;
+                    MarkerData.HeadingOffset = 0f;
+                    RingData.Color = Color.MediumPurple;
+                    _hoveringEntity = null;
+                }
+                else if (_hoveringEntity.IsPed() && MarkerData.RepresentedBy.IsPed() && type == EntityType.ObjectiveActor)
+                {
+                    CurrentMission.Objectives.Remove(
+                        CurrentMission.Objectives.FirstOrDefault(m =>
+                        {
+                            var o = m as SerializableActorObjective;
+                            return o?.GetPed().Handle.Value == _hoveringEntity.Handle.Value;
+                        }));
+
+                    _hoveringEntity.Delete();
+                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+                        MarkerData.RepresentedBy.Opacity = 1f;
+                    MarkerData.HeadingOffset = 0f;
+                    RingData.Color = Color.MediumPurple;
+                    _hoveringEntity = null;
+                }
+                else if (_hoveringEntity.IsObject() && MarkerData.RepresentedBy.IsObject() && PlacedWeaponHash == 0 &&
+                         !IsPlacingObjective)
+                {
+                    CurrentMission.Objects.Remove(
+                        CurrentMission.Objects.FirstOrDefault(
+                            o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
+
+                    _hoveringEntity.Delete();
+                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+                        MarkerData.RepresentedBy.Opacity = 1f;
+                    MarkerData.HeadingOffset = 0f;
+                    RingData.Color = Color.MediumPurple;
+                    _hoveringEntity = null;
+                }
+                else if (_hoveringEntity.IsObject() && MarkerData.RepresentedBy.IsObject() &&
+                         PlacedWeaponHash != 0 && !IsPlacingObjective)
+                {
+                    CurrentMission.Pickups.Remove(
+                        CurrentMission.Pickups.FirstOrDefault(
+                            o => o.GetEntity().Handle.Value == _hoveringEntity.Handle.Value));
+
+                    _hoveringEntity.Delete();
+                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+                        MarkerData.RepresentedBy.Opacity = 1f;
+                    MarkerData.HeadingOffset = 0f;
+                    RingData.Color = Color.MediumPurple;
+                    _hoveringEntity = null;
+                }
+                else if (_hoveringEntity.IsObject() && MarkerData.RepresentedBy.IsObject() &&
+                         PlacedWeaponHash != 0 && IsPlacingObjective)
+                {
+                    CurrentMission.Objectives.Remove(
+                        CurrentMission.Objectives.FirstOrDefault(o =>
+                        {
+                            var d = o as SerializablePickupObjective;
+                            return d?.GetObject().Handle.Value == _hoveringEntity.Handle.Value;
+                        }));
+
+                    _hoveringEntity.Delete();
+                    if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+                        MarkerData.RepresentedBy.Opacity = 1f;
+                    MarkerData.HeadingOffset = 0f;
+                    RingData.Color = Color.MediumPurple;
+                    _hoveringEntity = null;
+                }
+            }
+            if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() &&
+                     _selectedMarker != null && Game.IsControlJustPressed(0, GameControl.CellphoneSelect))
+            {
+                CurrentMission.Objectives.Remove(_selectedMarker);
+                _selectedMarker = null;
+            }
+
 
             #endregion
 

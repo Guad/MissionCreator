@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace ContentCreator.StaticData
@@ -8,17 +11,32 @@ namespace ContentCreator.StaticData
     {
         public static List<dynamic> AmmoChoses = new List<dynamic>
         {
-             10, 50, 100, 300, 1000, 9999,
+            10,
+            50,
+            100,
+            300,
+            1000,
+            9999,
         };
 
         public static List<dynamic> HealthArmorChoses = new List<dynamic>
         {
-             0, 50, 100, 200, 500, 2500,
+            0,
+            50,
+            100,
+            200,
+            500,
+            2500,
         };
 
         public static List<dynamic> VehicleHealthChoses = new List<dynamic>
         {
-             -100, 100, 500, 1000, 2500, 10000,
+            -100,
+            100,
+            500,
+            1000,
+            2500,
+            10000,
         };
 
         public static List<dynamic> RelationshipGroups = new List<dynamic>
@@ -50,14 +68,23 @@ namespace ContentCreator.StaticData
             "Never",
         };
 
-        public static List<dynamic> ObjectiveIndexList = new List<dynamic>(Enumerable.Range(1, 300).Select(n => (dynamic) n));
+        public static List<dynamic> ObjectiveIndexList =
+            new List<dynamic>(Enumerable.Range(1, 300).Select(n => (dynamic) n));
+
+        public static List<dynamic> KnownColors = new List<dynamic>();
 
         public static void Init()
         {
-            NumberMenu.AddRange(Enumerable.Range(0, 300).Select(n => (dynamic)n));
+            NumberMenu.AddRange(Enumerable.Range(0, 300).Select(n => (dynamic) n));
 
-            RemoveAfterList.AddRange(Enumerable.Range(1, 300).Select(n => (dynamic)n));
+            RemoveAfterList.AddRange(Enumerable.Range(1, 300).Select(n => (dynamic) n));
 
+
+            var colors = (KnownColor[]) Enum.GetValues(typeof (KnownColor));
+            for (var i = 28; i < colors.Length - 8; i++)
+            {
+                KnownColors.Add(colors[i]);
+            }
         }
     }
 }

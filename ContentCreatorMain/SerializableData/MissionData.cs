@@ -1,8 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Xml.Serialization;
 using ContentCreator.SerializableData.Objectives;
 
 namespace ContentCreator.SerializableData
 {
+    [XmlInclude(typeof(SerializableActorObjective))]
+    [XmlInclude(typeof(SerializableVehicleObjective))]
+    [XmlInclude(typeof(SerializablePickupObjective))]
+    [XmlInclude(typeof(SerializableMarker))]
+    [XmlInclude(typeof(SerializableObjective))]
+    [Serializable]
     public class MissionData
     {
         public string Name { get; set; } 

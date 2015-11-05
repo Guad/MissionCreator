@@ -51,8 +51,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Editor\Editor.cs" />
+    <Compile Include="Editor\NestedMenus\MarkerPropertiesMenu.cs" />
+    <Compile Include="Editor\NestedMenus\PickupObjectivePropertiesMenu.cs" />
+    <Compile Include="Editor\NestedMenus\VehicleObjectivePropertiesMenu.cs" />
     <Compile Include="Editor\NestedMenus\ActorObjectivePropertiesMenu.cs" />
     <Compile Include="Editor\NestedMenus\ObjectivePlacementMenu.cs" />
+    <Compile Include="Editor\NestedMenus\ObjectPropertiesMenu.cs" />
+    <Compile Include="Editor\NestedMenus\PickupPropertiesMenu.cs" />
     <Compile Include="Editor\NestedMenus\SpawnpointPropertiesMenu.cs" />
     <Compile Include="Editor\NestedMenus\VehiclePropertiesMenu.cs" />
     <Compile Include="Editor\NestedMenus\ActorPropertiesMenu.cs" />
@@ -65,6 +70,7 @@
     <Compile Include="SerializableData\ISerializableEntity.cs" />
     <Compile Include="SerializableData\MissionData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SerializableData\Objectives\SerializablePickupObjective.cs" />
     <Compile Include="SerializableData\Objectives\SerializableVehicleObjective.cs" />
     <Compile Include="SerializableData\Objectives\SerializableActorObjective.cs" />
     <Compile Include="SerializableData\Objectives\SerializableMarker.cs" />
@@ -75,6 +81,7 @@
     <Compile Include="SerializableData\SerializableSpawnpoint.cs" />
     <Compile Include="SerializableData\Objectives\SerializableTimer.cs" />
     <Compile Include="SerializableData\SerializableVehicle.cs" />
+    <Compile Include="StaticData\CheckpointData.cs" />
     <Compile Include="StaticData\WeaponsData.cs" />
     <Compile Include="StaticData\ObjectData.cs" />
     <Compile Include="StaticData\PedData.cs" />

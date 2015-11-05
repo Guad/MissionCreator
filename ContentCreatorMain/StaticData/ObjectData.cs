@@ -7,15 +7,15 @@ namespace ContentCreator.StaticData
     {
         public static Dictionary<string, Tuple<string, uint>[]> Database = new Dictionary<string, Tuple<string, uint>[]>
         {
-            {"Land", new []
+            {"Ramps", new []
             {
-               new Tuple<string, uint>("Banshee", 0xC1E908D2),
-               new Tuple<string, uint>("Benson", 0x7A61B330), 
+               new Tuple<string, uint>("Ramp 1", 0xB157C9E4),
+               new Tuple<string, uint>("Ramp 2", 0xF4F1511E), 
             }},
-            {"Motorcycles", new []
+            {"Barrels", new []
             {
-                new Tuple<string, uint>("Bmx", 0x43779C54), 
-                new Tuple<string, uint>("Bati", 0xF9300CC5),
+                new Tuple<string, uint>("Radioactive Waste", 0x478A8882), 
+                new Tuple<string, uint>("Barrel", 0xAFDD8CBB),
             }},
         };
     }

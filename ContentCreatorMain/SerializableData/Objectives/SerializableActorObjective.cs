@@ -11,6 +11,7 @@ namespace ContentCreator.SerializableData.Objectives
         public int Behaviour { get; set; }
         public int Health { get; set; }
         public int Armor { get; set; }
+        public int Accuracy { get; set; }
 
         public bool ShowHealthBar { get; set; }
         public string Name { get; set; }

@@ -274,6 +274,17 @@ namespace ContentCreator.Editor.NestedMenus
             }
             #endregion
 
+            #region Objective Type
+            {
+                var item = new MenuListItem("Objective Type", StaticData.StaticLists.ObjectiveTypeList, actor.ObjectiveType);
+
+                item.OnListChanged += (sender, index) =>
+                {
+                    actor.ObjectiveType = index;
+                };
+                AddItem(item);
+            }
+            #endregion
 
             RefreshIndex();
         }

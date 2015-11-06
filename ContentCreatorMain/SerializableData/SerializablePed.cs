@@ -11,6 +11,7 @@ namespace ContentCreator.SerializableData
         public int Behaviour { get; set; }
         public int Health { get; set; }
         public int Armor { get; set; }
+        public int Accuracy { get; set; }
 
         public bool SpawnInVehicle { get; set; }
         public int VehicleSeat { get; set; }

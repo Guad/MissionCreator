@@ -36,7 +36,7 @@ namespace ContentCreator.Editor.NestedMenus
                 if(string.IsNullOrEmpty(data.Name))
                     item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
                 else
-                    item.SetRightLabel(data.Name);
+                    item.SetRightLabel(data.Name.Length > 20 ? data.Name.Substring(0, 20) + "..." : data.Name);
 
                 item.Activated += (sender, selectedItem) =>
                 {
@@ -70,7 +70,7 @@ namespace ContentCreator.Editor.NestedMenus
                 if (string.IsNullOrEmpty(data.Description))
                     item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
                 else
-                    item.SetRightLabel(data.Description);
+                    item.SetRightLabel(data.Description.Length > 20 ? data.Description.Substring(0, 20) + "..." : data.Description);
 
                 item.Activated += (sender, selectedItem) =>
                 {

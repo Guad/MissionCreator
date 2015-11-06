@@ -183,6 +183,21 @@ namespace ContentCreator.Editor.NestedMenus
             }
             #endregion
 
+            #region Accuracy
+            {
+                var listIndex = StaticData.StaticLists.AccuracyList.FindIndex(n => n == (dynamic)actor.Accuracy);
+                var item = new MenuListItem("Accuracy", StaticData.StaticLists.AccuracyList, listIndex);
+
+                item.OnListChanged += (sender, index) =>
+                {
+                    int newAmmo = int.Parse(((MenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
+                    actor.Accuracy = newAmmo;
+                };
+
+                AddItem(item);
+            }
+            #endregion
+
             #region Relationship
             {
                 var item = new MenuListItem("Relationship", StaticData.StaticLists.RelationshipGroups, actor.RelationshipGroup);

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using ContentCreator.SerializableData;
 using ContentCreator.SerializableData.Objectives;
 using ContentCreator.UI;
@@ -29,6 +30,8 @@ namespace ContentCreator
         #endregion
 
         private Group _playerGroup;
+        private Model _oldModel;
+        private Vector3 _oldPos;
 
         public void Load(MissionData mission)
         {
@@ -46,13 +49,33 @@ namespace ContentCreator
                 return;
             }
 
-            World.Weather = CurrentMission.Weather;
-            World.TimeOfDay = new TimeSpan(CurrentMission.Time, 0, 0);
-
+            _oldModel = Game.LocalPlayer.Model;
+            _oldPos = Game.LocalPlayer.Character.Position;
+            
             GameFiber.StartNew(delegate
             {
                 Game.FadeScreenOut(1000, true);
-                
+
+                World.Weather = CurrentMission.Weather;
+                World.TimeOfDay = new TimeSpan(CurrentMission.Time, 0, 0);
+
+                var res = UIMenu.GetScreenResolutionMantainRatio();
+
+                var name = new ResText(CurrentMission.Name, new Point((int)res.Width - 100, (int)res.Height - 100), 0.7f, Color.WhiteSmoke, Common.EFont.HouseScript, ResText.Alignment.Right);
+                name.Outline = true;
+
+                GameFiber.StartNew(delegate
+                {
+                    DateTime start = DateTime.Now;
+                    while (DateTime.Now.Subtract(start).TotalMilliseconds < 10000)
+                    {
+                        name.Draw();
+                        GameFiber.Yield();
+                    }
+                });
+
+                var startTime = Game.GameTime;
+
                 while (IsMissionPlaying)
                 {
                     Game.MaxWantedLevel = CurrentMission.MaxWanted;
@@ -65,6 +88,19 @@ namespace ContentCreator
                         break;
                     }
 
+                    if (CurrentMission.TimeLimit.HasValue)
+                    {
+                        var elapsed = TimeSpan.FromMilliseconds(Convert.ToDouble((CurrentMission.TimeLimit.Value*1000) - (Game.GameTime - startTime)));
+                        if(TimerBars != null)
+                            TimerBars.UpdateValue("GLOBAL_TIME", "TIME", false, string.Format("{0:D2}:{1:D2}.{2:D3}", elapsed.Minutes, elapsed.Seconds, elapsed.Milliseconds));
+                    }
+
+                    if (CurrentMission.TimeLimit.HasValue && (Game.GameTime - startTime) > CurrentMission.TimeLimit*1000)
+                    {
+                        FailMission(reason: "You have run out of time.");
+                        break;
+                    }
+
                     if (CurrentObjectives.Count == 0)
                     {
                         AdvanceStage();
@@ -74,7 +110,7 @@ namespace ContentCreator
                         }
                     }
 
-                    TimerBars.Draw();
+                    TimerBars?.Draw();
                     GameFiber.Yield();
                 }
             });
@@ -85,24 +121,43 @@ namespace ContentCreator
         {
             GameFiber.StartNew(delegate
             {
-                Game.LocalPlayer.Model = Util.RequestModel(0xD7114C9);
-                if(death)
+                Game.LocalPlayer.Model = _oldModel;
+                if (death)
                     Game.LocalPlayer.Character.Kill();
+                else
+                    Game.LocalPlayer.Character.Position = _oldPos - new Vector3(0, 0, 1);
             });
-            Game.DisplayNotification("Mission over.");
+
             IsMissionPlaying = false;
-            Game.FadeScreenIn(100);
+            Game.FadeScreenIn(1000);
         }
 
-        public void FailMission(bool death = false)
+        public void FailMission(bool death = false, string reason = "")
         {
-            Game.DisplayNotification("Mission Failed!");
+            if (!death)
+            {
+                var screen = new MissionFailedScreen(reason);
+                screen.Show();
+                while (!screen.HasPressedContinue)
+                {
+                    screen.Draw();
+                    GameFiber.Yield();
+                }
+            }
             AbortMission(death);
         }
 
         public void SucceedMission()
         {
-            Game.DisplayNotification("Mission Successful!");
+            var missPassedScreen = new MissionPassedScreen(CurrentMission.Name, 100, MissionPassedScreen.Medal.Gold);
+            missPassedScreen.AddItem("Author", CurrentMission.Author, MissionPassedScreen.TickboxState.None);
+            missPassedScreen.Show();
+            while (!missPassedScreen.HasPressedContinue)
+            {
+                missPassedScreen.Draw();
+                GameFiber.Yield();
+            }
+            Game.FadeScreenOut(1000, true);
             AbortMission();
         }
 
@@ -133,7 +188,7 @@ namespace ContentCreator
                     {
                         if (veh.FailMissionOnDeath && newv.IsDead)
                         {
-                            FailMission();
+                            FailMission(reason: "The vehicle has been destroyed.");
                         }
                         GameFiber.Yield();
                     }
@@ -143,9 +198,9 @@ namespace ContentCreator
                 });
             }
 
-            foreach (var veh in CurrentMission.Objectives.OfType<SerializableVehicleObjective>().Where(v => v.ActivateAfter == CurrentStage))
+            foreach (var veh in CurrentMission.Objectives.OfType<SerializableVehicleObjective>().Where(v => v.SpawnAfter == CurrentStage))
             {
-                CurrentObjectives.Add(veh);
+                
                 var newv = new Vehicle(Util.RequestModel(veh.ModelHash), veh.Position)
                 {
                     PrimaryColor = Color.FromArgb((int)veh.PrimaryColor.X, (int)veh.PrimaryColor.Y,
@@ -155,24 +210,42 @@ namespace ContentCreator
                 };
                 newv.Health = veh.Health;
                 newv.Rotation = veh.Rotation;
-                var blip = newv.AttachBlip();
-                blip.Color = Color.CornflowerBlue;
+
                 GameFiber.StartNew(delegate
                 {
-                    /*
-                    while (!newv.IsDead)
-                    {
-                        if (veh.ShowHealthBar)
-                        {
-                            TimerBars.UpdateValue(newv.Handle.Value.ToString(), veh.Name, true, (float)newv.Health / veh.Health);
-                        }
-                        GameFiber.Yield();
-                    }*/
-
-                    while (!Game.LocalPlayer.Character.IsInVehicle(newv, false) && IsMissionPlaying)
+                    while (CurrentStage != veh.ActivateAfter && IsMissionPlaying)
                     {
                         GameFiber.Yield();
                     }
+                    CurrentObjectives.Add(veh);
+
+                    var blip = newv.AttachBlip();
+                    
+
+                    if(veh.ObjectiveType == 0)
+                    {
+                        blip.Color = Color.DarkRed;
+                        while (!newv.IsDead)
+                        {
+                            if (veh.ShowHealthBar)
+                            {
+                                TimerBars.UpdateValue(newv.Handle.Value.ToString(), veh.Name, true, (100f*newv.Health / veh.Health).ToString("###") + "%");
+                            }
+                            GameFiber.Yield();
+                        }
+                        TimerBars.UpdateValue(newv.Handle.Value.ToString(), veh.Name, true, "0%");
+                    }
+
+                    if (veh.ObjectiveType == 1)
+                    {
+                        blip.Color = Color.CornflowerBlue;
+                        while (!Game.LocalPlayer.Character.IsInVehicle(newv, false) && IsMissionPlaying)
+                        {
+                            GameFiber.Yield();
+                        }
+                    }
+
+
                     CurrentObjectives.Remove(veh);
 
                     if(blip.IsValid())
@@ -192,7 +265,7 @@ namespace ContentCreator
             {
                 var sp = CurrentMission.Spawnpoints.First(s => s.SpawnAfter == CurrentStage);
                 Game.FadeScreenOut(100, true);
-                Game.LocalPlayer.Character.Position = sp.Position;
+                Game.LocalPlayer.Character.Position = sp.Position - new Vector3(0,0,1);
                 Game.LocalPlayer.Character.Rotation = sp.Rotation;
                 Game.LocalPlayer.Model = Util.RequestModel(sp.ModelHash);
 
@@ -215,9 +288,10 @@ namespace ContentCreator
             {
                 GameFiber.StartNew(delegate
                 {
-                    var ped = new Ped(Util.RequestModel(actor.ModelHash), actor.Position, actor.Rotation.Yaw);
-                        
+                    var ped = new Ped(Util.RequestModel(actor.ModelHash), actor.Position - new Vector3(0,0,1f), actor.Rotation.Yaw);
+                    
                     ped.Rotation = actor.Rotation;
+                    ped.Accuracy = actor.Accuracy;
 
                     var blip = ped.AttachBlip();
                     blip.Scale = 0.6f;
@@ -257,7 +331,7 @@ namespace ContentCreator
                     {
                         if (actor.FailMissionOnDeath && ped.IsDead)
                         {
-                            FailMission();
+                            FailMission(reason: "An ally has died.");
                         }
                         GameFiber.Yield();
                     }
@@ -291,18 +365,29 @@ namespace ContentCreator
             {
                 GameFiber.StartNew(delegate
                 {
-                    var obj = NativeFunction.CallByName<uint>("CREATE_PICKUP", pickup.PickupHash, pickup.Position.X,
-                        pickup.Position.Y, pickup.Position.Z, -1, pickup.Ammo, 1, 0);
+                    var obj = NativeFunction.CallByName<uint>("CREATE_PICKUP_ROTATE", pickup.PickupHash, pickup.Position.X,
+                        pickup.Position.Y, pickup.Position.Z, pickup.Rotation.Pitch, pickup.Rotation.Roll, pickup.Rotation.Yaw,
+                        1, pickup.Ammo, 2, 1, 0);
 
+                    int counter = 0;
                     while (IsMissionPlaying && (pickup.RemoveAfter == 0 || pickup.RemoveAfter < CurrentStage))
                     {
-                        if (NativeFunction.CallByName<bool>("HAS_PICKUP_BEEN_COLLECTED", obj) && pickup.Respawn)
+                        var alpha = 40 * (Math.Sin(Util.DegToRad(counter % 180)));
+                        Util.DrawMarker(28, pickup.Position, new Vector3(), new Vector3(0.75f, 0.75f, 0.75f), Color.FromArgb((int)alpha, 10, 10, 230));
+                        counter += 5;
+                        if (counter >= 360)
+                            counter = 0;
+
+                        if ((pickup.Position - Game.LocalPlayer.Character.Position).Length() < 1f && pickup.Respawn)
                         {
                             NativeFunction.CallByName<uint>("REMOVE_PICKUP", obj);
-                            obj = NativeFunction.CallByName<uint>("CREATE_PICKUP", pickup.PickupHash, pickup.Position.X,
-                            pickup.Position.Y, pickup.Position.Z, -1, pickup.Ammo, 1, 0);
+                            while((pickup.Position - Game.LocalPlayer.Character.Position).Length() < 3f)
+                            { GameFiber.Yield();}
+                            obj = NativeFunction.CallByName<uint>("CREATE_PICKUP_ROTATE", pickup.PickupHash, pickup.Position.X,
+                            pickup.Position.Y, pickup.Position.Z, pickup.Rotation.Pitch, pickup.Rotation.Roll, pickup.Rotation.Yaw,
+                            1, pickup.Ammo, 2, 1, 0);
                         }
-                        else if (NativeFunction.CallByName<bool>("HAS_PICKUP_BEEN_COLLECTED", obj) && !pickup.Respawn)
+                        else if ((pickup.Position - Game.LocalPlayer.Character.Position).Length() < 1f && !pickup.Respawn)
                             break;
                         GameFiber.Yield();
                     }
@@ -310,18 +395,14 @@ namespace ContentCreator
                 });
             }
 
-            foreach (var actor in CurrentMission.Objectives.OfType<SerializableActorObjective>().Where(v => v.ActivateAfter == CurrentStage))
+            foreach (var actor in CurrentMission.Objectives.OfType<SerializableActorObjective>().Where(v => v.SpawnAfter == CurrentStage))
             {
-                CurrentObjectives.Add(actor);
-
-                var ped = new Ped(Util.RequestModel(actor.ModelHash), actor.Position, actor.Rotation.Yaw);
+                var ped = new Ped(Util.RequestModel(actor.ModelHash), actor.Position - new Vector3(0, 0, 1f), actor.Rotation.Yaw);
 
                 ped.Rotation = actor.Rotation;
+                ped.Accuracy = actor.Accuracy;
 
-                var blip = ped.AttachBlip();
-                blip.Scale = 0.6f;
-                blip.Color = Color.DarkRed;
-
+                
                 if (actor.WeaponHash != 0)
                     ped.GiveNewWeapon(actor.WeaponHash, actor.WeaponAmmo, true);
 
@@ -344,22 +425,38 @@ namespace ContentCreator
                     ped.WarpIntoVehicle(vehList.ToList()[0], actor.VehicleSeat);
                 }
 
-                ped.BlockPermanentEvents = false;
-
-                if (actor.Behaviour == 3)
-                    ped.Tasks.FightAgainstClosestHatedTarget(100f);
-                else if (actor.Behaviour == 2)
-                    NativeFunction.CallByName<uint>("TASK_GUARD_CURRENT_POSITION", ped.Handle.Value, 10, 10, 1);
-
                 GameFiber.StartNew(delegate
                 {
+                    while (CurrentStage != actor.ActivateAfter && IsMissionPlaying)
+                    {
+                        GameFiber.Yield();
+                    }
+
+                    CurrentObjectives.Add(actor);
+                    var blip = ped.AttachBlip();
+                    blip.Scale = 0.6f;
+                    blip.Color = Color.DarkRed;
+
+                    ped.BlockPermanentEvents = false;
+
+                    if (actor.Behaviour == 3)
+                        ped.Tasks.FightAgainstClosestHatedTarget(100f);
+                    else if (actor.Behaviour == 2)
+                        NativeFunction.CallByName<uint>("TASK_GUARD_CURRENT_POSITION", ped.Handle.Value, 10, 10, 1);
+
+                
                     while (!ped.IsDead && IsMissionPlaying)
                     {
                         if (actor.ShowHealthBar)
                         {
-                            TimerBars.UpdateValue(ped.Handle.Value.ToString(), actor.Name, true, (float)ped.Health/actor.Health);
+                            TimerBars.UpdateValue(ped.Handle.Value.ToString(), actor.Name, true, (100f*ped.Health/actor.Health).ToString("###") + "%");
                         }
                         GameFiber.Yield();
+                    }
+
+                    if (actor.ShowHealthBar)
+                    {
+                        TimerBars.UpdateValue(ped.Handle.Value.ToString(), actor.Name, true, "0%");
                     }
 
                     CurrentObjectives.Remove(actor);
@@ -380,11 +477,18 @@ namespace ContentCreator
                 CurrentObjectives.Add(pickup);
                 GameFiber.StartNew(delegate
                 {
-                    var obj = NativeFunction.CallByName<uint>("CREATE_PICKUP", pickup.PickupHash, pickup.Position.X,
-                        pickup.Position.Y, pickup.Position.Z, -1, pickup.Ammo, 1, 0);
+                    var obj = NativeFunction.CallByName<uint>("CREATE_PICKUP_ROTATE", pickup.PickupHash, pickup.Position.X,
+                        pickup.Position.Y, pickup.Position.Z, pickup.Rotation.Pitch, pickup.Rotation.Roll, pickup.Rotation.Yaw,
+                        1, pickup.Ammo, 2, 1, 0);
 
-                    while (!NativeFunction.CallByName<bool>("HAS_PICKUP_BEEN_COLLECTED", obj) && IsMissionPlaying)
+                    var counter = 0;
+                    while ((pickup.Position - Game.LocalPlayer.Character.Position).Length() > 1f && IsMissionPlaying)
                     {
+                        var alpha = 40 * (Math.Sin(Util.DegToRad(counter % 180)));
+                        Util.DrawMarker(28, pickup.Position, new Vector3(), new Vector3(0.75f, 0.75f, 0.75f), Color.FromArgb((int)alpha, 230, 10, 10));
+                        counter += 5;
+                        if (counter >= 360)
+                            counter = 0;
                         GameFiber.Yield();
                     }
 
@@ -406,6 +510,7 @@ namespace ContentCreator
                     {
                         Util.DrawMarker(mark.Type, mark.Position, new Vector3(mark.Rotation.Pitch, mark.Rotation.Roll, mark.Rotation.Yaw), mark.Scale,
                         bColor);
+
                         GameFiber.Yield();
                     }
                     if(blip.IsValid())

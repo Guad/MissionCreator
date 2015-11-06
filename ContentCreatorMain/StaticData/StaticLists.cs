@@ -30,6 +30,18 @@ namespace ContentCreator.StaticData
             2500,
         };
 
+        public static List<dynamic> AccuracyList = new List<dynamic>
+        {
+            0,
+            25,
+            40,
+            50,
+            70,
+            80,
+            90,
+            100,
+        };
+
         public static List<dynamic> VehicleHealthChoses = new List<dynamic>
         {
             -100,
@@ -38,6 +50,12 @@ namespace ContentCreator.StaticData
             1000,
             2500,
             10000,
+        };
+
+        public static List<dynamic> ObjectiveTypeList = new List<dynamic>
+        {
+            "Destroy Vehicle",
+            "Enter Vehicle",
         };
 
         public static List<dynamic> RelationshipGroups = new List<dynamic>

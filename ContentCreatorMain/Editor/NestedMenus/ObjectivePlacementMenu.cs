@@ -181,7 +181,7 @@ namespace ContentCreator.Editor.NestedMenus
             #region Pickups
             {
                 var item = new NativeMenuItem("Pickups");
-                var dict = StaticData.WeaponsData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
+                var dict = StaticData.PickupData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Weapon");
 
                 menu.Build("Pistols");
@@ -193,25 +193,21 @@ namespace ContentCreator.Editor.NestedMenus
                 {
                     Editor.RingData.Color = Color.MediumPurple;
                     Editor.RingData.Type = RingType.HorizontalSplitArrowCircle;
-                    Editor.MarkerData.Display = true;
-                    Editor.MarkerData.MarkerType = "prop_mp_placement";
+                    Editor.MarkerData.Display = false;
                     Editor.MarkerData.RepresentationHeightOffset = 1f;
-                    Editor.IsPlacingObjective = true;
                     GameFiber.StartNew(delegate
                     {
                         var hash =
-                            StaticData.WeaponsData.Database[menu.CurrentSelectedCategory].First(
+                            StaticData.PickupData.Database[menu.CurrentSelectedCategory].First(
                                 tuple => tuple.Item1 == menu.CurrentSelectedItem).Item2;
 
                         var pos = Game.LocalPlayer.Character.Position;
-                        var veh =
-                            World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", hash,
-                                                                                                 9999, pos.X, pos.Y, pos.Z,
-                                                                                                 true, 3f));
+                        var veh = new Rage.Object(Util.RequestModel("prop_mp_repair"), pos);
                         Editor.PlacedWeaponHash = hash;
                         veh.IsPositionFrozen = true;
                         Editor.MarkerData.RepresentedBy = veh;
                         NativeFunction.CallByName<uint>("SET_ENTITY_COLLISION", veh.Handle.Value, false, 0);
+                        Editor.IsPlacingObjective = true;
                     });
                 };
 
@@ -236,32 +232,10 @@ namespace ContentCreator.Editor.NestedMenus
                 {
                     GameFiber.StartNew(delegate
                     {
-                        var heading = 0f;
-                        if (Editor.MarkerData.RepresentedBy != null && Editor.MarkerData.RepresentedBy.IsValid())
-                        {
-                            heading = Editor.MarkerData.RepresentedBy.Heading;
-                            Editor.MarkerData.RepresentedBy.Delete();
-                        }
-
-
                         var hash =
-                            StaticData.WeaponsData.Database[menu.CurrentSelectedCategory].First(
-                                tuple => tuple.Item1 == menu.CurrentSelectedItem).Item2;
-
-                        var pos = Game.LocalPlayer.Character.Position;
-                        var veh =
-                            World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", hash,
-                                                                                                 9999, pos.X, pos.Y, pos.Z,
-                                                                                                 true, 3f));
-
-                        veh.Heading = heading;
-                        veh.IsPositionFrozen = true;
+                           StaticData.PickupData.Database[menu.CurrentSelectedCategory].First(
+                               tuple => tuple.Item1 == menu.CurrentSelectedItem).Item2;
                         Editor.PlacedWeaponHash = hash;
-                        Editor.MarkerData.RepresentedBy = veh;
-                        NativeFunction.CallByName<uint>("SET_ENTITY_COLLISION", veh.Handle.Value, false, 0);
-                        //var dims = Util.GetModelDimensions(veh.Model);
-                        //Editor.RingData.HeightOffset = 1f;
-                        //Editor.MarkerData.HeightOffset = 1f;
                     });
                 };
             }

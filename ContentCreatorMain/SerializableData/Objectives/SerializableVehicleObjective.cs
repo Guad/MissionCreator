@@ -13,6 +13,8 @@ namespace ContentCreator.SerializableData.Objectives
         public bool ShowHealthBar { get; set; }
         public string Name { get; set; }
 
+        public int ObjectiveType { get; set; }
+
         private Vehicle _veh;
 
         public virtual void SetVehicle(Vehicle veh)

@@ -95,6 +95,8 @@
     <Compile Include="StaticData\PedData.cs" />
     <Compile Include="StaticData\StaticLists.cs" />
     <Compile Include="StaticData\VehicleData.cs" />
+    <Compile Include="UI\MissionFailedScreen.cs" />
+    <Compile Include="UI\MissionPassedScreen.cs" />
     <Compile Include="UI\TimerBars.cs" />
     <Compile Include="Util.cs" />
   </ItemGroup>

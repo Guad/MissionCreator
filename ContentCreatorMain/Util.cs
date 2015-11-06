@@ -275,5 +275,11 @@ namespace ContentCreator
             if (value > max) return max;
             return value;
         }
+
+        public static float LinearLerp(float time, float startVal, float endValue, float duration)
+        {
+            var change = endValue - startVal;
+            return change*time/duration + startVal;
+        }
     }
 }

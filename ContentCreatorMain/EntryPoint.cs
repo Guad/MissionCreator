@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using Rage;
+using Rage.Native;
+using RAGENativeUI.Elements;
 
 
 [assembly: Rage.Attributes.Plugin("Content Creator", Description = "DYOM Port.", Author = "Guadmaz")]
@@ -41,7 +45,7 @@ namespace ContentCreator
         {
             MissionPlayer.Tick();
             MainEditor.Tick(e);
-            if (Game.IsControlJustPressed(0, GameControl.Context)) // FOR DEBUGGING PURPOSE ONLY
+            if (Game.IsKeyDown(Keys.F8))
             {
                 if(!MainEditor.IsInEditor && !MainEditor.IsInMainMenu)
                     MainEditor.EnterEditor();

@@ -95,7 +95,22 @@ namespace ContentCreator.Editor
                 var menuItem = new NativeMenuItem("Exit to Grand Theft Auto V", "Leave the Content Creator");
                 menuItem.Activated += (sender, item) =>
                 {
-                    LeaveEditor();
+                    if(!EntryPoint.MissionPlayer.IsMissionPlaying)
+                        LeaveEditor();
+                    else
+                    {
+                        GameFiber.StartNew(delegate
+                        {
+                            _mainMenu.Visible = false;
+                            EntryPoint.MissionPlayer.FailMission(reason: "You canceled the mission.");
+
+                            IsInMainMenu = false;
+                            _menuPool.CloseAllMenus();
+                            BigMinimap = false;
+                            IsInFreecam = false;
+                            IsInEditor = false;
+                        });
+                    }
                 };
                 _mainMenu.AddItem(menuItem);
             }
@@ -160,6 +175,8 @@ namespace ContentCreator.Editor
 
             CameraClampMax = -30f;
             CameraClampMin = -85f;
+
+            _blips = new List<Blip>();
         }
 
         #region NativeUI
@@ -184,7 +201,7 @@ namespace ContentCreator.Editor
         public static bool PlayerSpawnOpen { get; set; }
         public static bool IsPlacingObjective { get; set; }
         public static List<INestedMenu> Children;
-        public static uint PlacedWeaponHash { get; set; }
+        public static int PlacedWeaponHash { get; set; }
         public static int? ObjectiveMarkerId { get; set; }
         public static float CameraClampMax { get; set; }
         public static float CameraClampMin { get; set; }
@@ -199,6 +216,7 @@ namespace ContentCreator.Editor
         private UIMenu _placementMenu;
         private INestedMenu _propertiesMenu;
         private SerializableMarker _selectedMarker;
+        private List<Blip> _blips;
         #endregion
         
         private void EnterFreecam()
@@ -291,6 +309,12 @@ namespace ContentCreator.Editor
                 });
                 CurrentMission = null;
             }
+
+            _blips.ForEach(b =>
+            {
+                if(b.IsValid())
+                    b.Delete();
+            });
         }
 
         public void LeaveEditor()
@@ -311,7 +335,7 @@ namespace ContentCreator.Editor
             if (MainCamera != null)
                 MainCamera.Active = false;
             Game.LocalPlayer.Character.Opacity = 1f;
-            Game.LocalPlayer.Character.Position -= new Vector3(0, 0, Game.LocalPlayer.Character.HeightAboveGround - 1f);
+            Game.LocalPlayer.Character.Position -= new Vector3(0, 0, Game.LocalPlayer.Character.HeightAboveGround);
         }
 
         public void CreateNewMission()
@@ -369,6 +393,15 @@ namespace ContentCreator.Editor
             MissionData tmpMiss = null;
             using (var stream = File.OpenRead(path))
                 tmpMiss = (MissionData)serializer.Deserialize(stream);
+
+            tmpMiss.Objectives = new List<SerializableObjective>(tmpMiss.Objectives);
+            tmpMiss.Actors = new List<SerializablePed>(tmpMiss.Actors);
+            tmpMiss.Cutscenes = new List<SerializableCutscene>(tmpMiss.Cutscenes);
+            tmpMiss.Objects = new List<SerializableObject>(tmpMiss.Objects);
+            tmpMiss.Pickups = new List<SerializablePickup>(tmpMiss.Pickups);
+            tmpMiss.Spawnpoints = new List<SerializableSpawnpoint>(tmpMiss.Spawnpoints);
+            tmpMiss.Vehicles = new List<SerializableVehicle>(tmpMiss.Vehicles);
+
             GameFiber.StartNew(delegate
             {
                 foreach (var vehicle in tmpMiss.Vehicles)
@@ -380,6 +413,13 @@ namespace ContentCreator.Editor
                         SecondaryColor = Color.FromArgb((int)vehicle.SecondaryColor.X, (int)vehicle.SecondaryColor.Y,
                             (int)vehicle.SecondaryColor.Z),
                     };
+
+                    var blip = newv.AttachBlip();
+                    blip.Color = Color.Orange;
+                    blip.Scale = 0.7f;
+                    _blips.Add(blip);
+
+                    newv.Rotation = vehicle.Rotation;
                     vehicle.SetEntity(newv);
                 }
 
@@ -389,6 +429,13 @@ namespace ContentCreator.Editor
                     {
                         BlockPermanentEvents = true,
                     });
+                    var blip = ped.GetEntity().AttachBlip();
+                    blip.Color = Color.Orange;
+                    blip.Scale = 0.7f;
+                    _blips.Add(blip);
+                    if (ped.WeaponHash != 0)
+                        ((Ped)ped.GetEntity()).GiveNewWeapon(ped.WeaponHash, ped.WeaponAmmo, true);
+
                 }
 
                 foreach (var o in tmpMiss.Objects)
@@ -404,13 +451,16 @@ namespace ContentCreator.Editor
                     {
                         BlockPermanentEvents = true,
                     });
+                    if(spawnpoint.WeaponHash != 0)
+                    ((Ped)spawnpoint.GetEntity()).GiveNewWeapon(spawnpoint.WeaponHash, spawnpoint.WeaponAmmo, true);
+                    var blip = spawnpoint.GetEntity().AttachBlip();
+                    blip.Color = Color.White;
+                    _blips.Add(blip);
                 }
 
                 foreach (var pickup in tmpMiss.Pickups)
                 {
-                    var tmpObject = World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", pickup.ModelHash,
-                                                                                                 9999, pickup.Position.X, pickup.Position.Y, pickup.Position.Z,
-                                                                                                 true, 3f));
+                    var tmpObject = new Rage.Object("prop_mp_repair", pickup.Position);
                     tmpObject.Rotation = pickup.Rotation;
                     tmpObject.Position = pickup.Position;
                     tmpObject.IsPositionFrozen = true;
@@ -423,6 +473,12 @@ namespace ContentCreator.Editor
                     {
                         BlockPermanentEvents = true,
                     });
+                    if (ped.WeaponHash != 0)
+                        ((Ped)ped.GetPed()).GiveNewWeapon(ped.WeaponHash, ped.WeaponAmmo, true);
+                    var blip = ped.GetPed().AttachBlip();
+                    blip.Color = Color.Red;
+                    blip.Scale = 0.7f;
+                    _blips.Add(blip);
                 }
 
                 foreach (var vehicle in tmpMiss.Objectives.OfType<SerializableVehicleObjective>())
@@ -434,14 +490,18 @@ namespace ContentCreator.Editor
                         SecondaryColor = Color.FromArgb((int)vehicle.SecondaryColor.X, (int)vehicle.SecondaryColor.Y,
                             (int)vehicle.SecondaryColor.Z),
                     };
+                    newv.Rotation = vehicle.Rotation;
+                    var blip = newv.AttachBlip();
+                    blip.Color = Color.Red;
+                    blip.Scale = 0.7f;
+                    _blips.Add(blip);
                     vehicle.SetVehicle(newv);
                 }
 
                 foreach (var pickup in tmpMiss.Objectives.OfType<SerializablePickupObjective>())
                 {
-                    var tmpObject = World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", pickup.ModelHash,
-                                                                                                 9999, pickup.Position.X, pickup.Position.Y, pickup.Position.Z,
-                                                                                                 true, 3f));
+                    var tmpObject = new Rage.Object("prop_mp_repair", pickup.Position);
+
                     tmpObject.Rotation = pickup.Rotation;
                     tmpObject.Position = pickup.Position;
                     tmpObject.IsPositionFrozen = true;
@@ -509,6 +569,12 @@ namespace ContentCreator.Editor
                 ped.ModelHash = veh.Model.Hash;
                 ped.PrimaryColor = new Vector3(veh.PrimaryColor.R, veh.PrimaryColor.G, veh.PrimaryColor.B);
                 ped.SecondaryColor = new Vector3(veh.SecondaryColor.R, veh.SecondaryColor.G, veh.SecondaryColor.B);
+            }
+
+            foreach (var ped in mission.Objectives.OfType<SerializablePickupObjective>())
+            {
+                ped.Position = ped.GetObject().Position;
+                ped.Rotation = ped.GetObject().Rotation;
             }
 
             if (!path.EndsWith(".xml"))
@@ -887,6 +953,7 @@ namespace ContentCreator.Editor
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.MoveDownOnly);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.FrontendLb);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.FrontendRb);
+            NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.HUDSpecial);
         }
 
         private void EnableMenuControls()
@@ -935,6 +1002,11 @@ namespace ContentCreator.Editor
             tmpPed.IsPositionFrozen = false;
             tmpPed.BlockPermanentEvents = true;
 
+            var blip = tmpPed.AttachBlip();
+            blip.Color = Color.Orange;
+            blip.Scale = 0.7f;
+            _blips.Add(blip);
+
             var tmpObj = new SerializablePed();
             tmpObj.SetEntity(tmpPed);
             tmpObj.SpawnAfter = 0;
@@ -945,6 +1017,7 @@ namespace ContentCreator.Editor
             tmpObj.WeaponHash = 0;
             tmpObj.Health = 200;
             tmpObj.Armor = 0;
+            tmpObj.Accuracy = 50;
             tmpObj.SpawnInVehicle = false;
             CurrentMission.Actors.Add(tmpObj);
             return tmpObj;
@@ -956,6 +1029,11 @@ namespace ContentCreator.Editor
             tmpPed.IsPositionFrozen = false;
             tmpPed.BlockPermanentEvents = true;
 
+            var blip = tmpPed.AttachBlip();
+            blip.Color = Color.Red;
+            blip.Scale = 0.7f;
+            _blips.Add(blip);
+
             var tmpObj = new SerializableActorObjective();
             tmpObj.SetPed(tmpPed);
             tmpObj.SpawnAfter = 0;
@@ -965,6 +1043,7 @@ namespace ContentCreator.Editor
             tmpObj.WeaponAmmo = 9999;
             tmpObj.WeaponHash = 0;
             tmpObj.Health = 200;
+            tmpObj.Accuracy = 50;
             tmpObj.Armor = 0;
             tmpObj.SpawnInVehicle = false;
             CurrentMission.Objectives.Add(tmpObj);
@@ -978,6 +1057,11 @@ namespace ContentCreator.Editor
                 PrimaryColor = primColor,
                 SecondaryColor = seconColor,
             };
+            var blip = tmpVeh.AttachBlip();
+            blip.Color = Color.Red;
+            blip.Scale = 0.7f;
+            _blips.Add(blip);
+
             tmpVeh.IsPositionFrozen = false;
             tmpVeh.Rotation = rotation;
             var tmpObj = new SerializableVehicleObjective();
@@ -994,6 +1078,10 @@ namespace ContentCreator.Editor
             var tmpPed = new Ped(model, pos, heading);
             tmpPed.IsPositionFrozen = true;
             tmpPed.BlockPermanentEvents = true;
+
+            var blip = tmpPed.AttachBlip();
+            blip.Color = Color.White;
+            _blips.Add(blip);
 
             var tmpObj = new SerializableSpawnpoint();
             tmpObj.SetEntity(tmpPed);
@@ -1015,6 +1103,12 @@ namespace ContentCreator.Editor
                 PrimaryColor = primColor,
                 SecondaryColor = seconColor,
             };
+
+            var blip = tmpVeh.AttachBlip();
+            blip.Color = Color.Orange;
+            blip.Scale = 0.7f;
+            _blips.Add(blip);
+
             tmpVeh.IsPositionFrozen = false;
             tmpVeh.Rotation = rotation;
             var tmpObj = new SerializableVehicle();
@@ -1040,35 +1134,27 @@ namespace ContentCreator.Editor
             return tmpObj;
         }
 
-        public SerializableObject CreatePickup(uint weaponHash, Vector3 pos, Rotator rot)
+        public SerializableObject CreatePickup(int weaponHash, Vector3 pos, Rotator rot)
         {
-            var tmpObject = World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", weaponHash,
-                                                                                                 9999, pos.X, pos.Y, pos.Z,
-                                                                                                 true, 3f));
+            var tmpObject = new Rage.Object(new Model("prop_mp_repair"), pos);
             tmpObject.Rotation = rot;
             tmpObject.Position = pos;
             tmpObject.IsPositionFrozen = true;
+
             var tmpObj = new SerializablePickup();
             tmpObj.SetEntity(tmpObject);
             tmpObj.SpawnAfter = 0;
             tmpObj.RemoveAfter = 0;
             tmpObj.Respawn = false;
             tmpObj.Ammo = 9999;
-            tmpObj.ModelHash = weaponHash;/*
-            var firstOrDefault = StaticData.PickupData.Database[
-                StaticData.PickupData.Database.FirstOrDefault(pair => pair.Value.Any(tup => tup.Item2 == weaponHash))
-                    .Key].FirstOrDefault(tup => tup.Item2 == weaponHash);
-            if (firstOrDefault != null)
-                tmpObj.PickupHash = firstOrDefault.Item3;*/
+            tmpObj.PickupHash = weaponHash;
             CurrentMission.Pickups.Add(tmpObj);
             return tmpObj;
         }
 
-        public SerializablePickupObjective CreatePickupObjective(uint weaponHash, Vector3 pos, Rotator rot)
+        public SerializablePickupObjective CreatePickupObjective(int weaponHash, Vector3 pos, Rotator rot)
         {
-            var tmpObject = World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", weaponHash,
-                                                                                                 9999, pos.X, pos.Y, pos.Z,
-                                                                                                 true, 3f));
+            var tmpObject = new Rage.Object(new Model("prop_mp_repair"), pos);
             tmpObject.Rotation = rot;
             tmpObject.Position = pos;
             tmpObject.IsPositionFrozen = true;
@@ -1078,13 +1164,7 @@ namespace ContentCreator.Editor
             tmpObj.ActivateAfter = 0;
             tmpObj.Respawn = false;
             tmpObj.Ammo = 9999;
-            tmpObj.ModelHash = weaponHash;/*
-            var firstOrDefault = StaticData.PickupData.Database[
-               StaticData.PickupData.Database.FirstOrDefault(pair => pair.Value.Any(tup => tup.Item2 == weaponHash))
-                   .Key].FirstOrDefault(tup => tup.Item2 == weaponHash);
-            if (firstOrDefault != null)
-                tmpObj.PickupHash =
-                    firstOrDefault.Item3;*/
+            tmpObj.PickupHash = weaponHash;
             CurrentMission.Objectives.Add(tmpObj);
             return tmpObj;
         }
@@ -1133,7 +1213,8 @@ namespace ContentCreator.Editor
             if (!IsInEditor) return;
             NativeFunction.CallByName<uint>("DISABLE_CONTROL_ACTION", 0, (int)GameControl.FrontendPauseAlternate);
 
-            NativeFunction.CallByHash<uint>(0x231C8F89D0539D8F, BigMinimap, false);
+
+            
             foreach (var objective in CurrentMission.Objectives)
             {
                 //TODO: Get model size
@@ -1285,6 +1366,10 @@ namespace ContentCreator.Editor
                 }
                 MainCamera.Position += movementVector;
                 Game.LocalPlayer.Character.Position = MainCamera.Position;
+                var head = MainCamera.Rotation.Yaw;
+                if (head < 0f)
+                    head += 360f;
+                Game.LocalPlayer.Character.Heading = head;
 
                 #endregion
 
@@ -1346,6 +1431,10 @@ namespace ContentCreator.Editor
                     }
                 }
             }
+
+            NativeFunction.CallByHash<uint>(0x231C8F89D0539D8F, BigMinimap, false);
+            Game.SetRadarZoomLevelThisFrame(Game.IsControlPressed(0, GameControl.HUDSpecial) ? 300 : 100);
+
             if (Game.IsControlJustPressed(0, GameControl.FrontendPause) && IsInFreecam)
             {
                 GameFiber.StartNew(delegate

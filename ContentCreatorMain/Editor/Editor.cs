@@ -1,15 +1,19 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
+using ContentCreator.CutsceneEditor;
 using ContentCreator.Editor.NestedMenus;
 using ContentCreator.SerializableData;
+using ContentCreator.SerializableData.Cutscenes;
 using ContentCreator.SerializableData.Objectives;
 using Rage;
 using Rage.Native;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
+using Object = Rage.Object;
 
 namespace ContentCreator.Editor
 {
@@ -36,6 +40,33 @@ namespace ContentCreator.Editor
                 {
                     CreateNewMission();
                     EnterFreecam();
+                };
+                _mainMenu.AddItem(menuItem);
+            }
+
+            {
+                var menuItem = new NativeMenuItem("Play Mission", "Play a mission.");
+                menuItem.Activated += (sender, item) =>
+                {
+                    GameFiber.StartNew(delegate
+                    {
+                        Editor.DisableControlEnabling = true;
+                        string path = Util.GetUserInput();
+                        if (string.IsNullOrEmpty(path))
+                        {
+                            Editor.DisableControlEnabling = false;
+                            return;
+                        }
+                        Editor.DisableControlEnabling = false;
+                        var miss = ReadMission(path);
+                        if (miss == null)
+                        {
+                            Game.DisplayNotification("Mission not found.");
+                            return;
+                        }
+                        LeaveEditor();
+                        EntryPoint.MissionPlayer.Load(miss);
+                    });
                 };
                 _mainMenu.AddItem(menuItem);
             }
@@ -125,7 +156,10 @@ namespace ContentCreator.Editor
                 });
             };
 
-            
+            _cutsceneUi = new CutsceneUi();
+
+            CameraClampMax = -30f;
+            CameraClampMin = -85f;
         }
 
         #region NativeUI
@@ -152,11 +186,13 @@ namespace ContentCreator.Editor
         public static List<INestedMenu> Children;
         public static uint PlacedWeaponHash { get; set; }
         public static int? ObjectiveMarkerId { get; set; }
+        public static float CameraClampMax { get; set; }
+        public static float CameraClampMin { get; set; }
         #endregion
 
         #region Private Variables
         private Object _mainObject;
-
+        private CutsceneUi _cutsceneUi;
         private float _ringRotation = 0f;
         private float _objectRotation = 0f;
         private Entity _hoveringEntity;
@@ -281,6 +317,12 @@ namespace ContentCreator.Editor
         public void CreateNewMission()
         {
             CurrentMission = new MissionData();
+            CurrentMission.Weather = WeatherType.ExtraSunny;
+            CurrentMission.Time = StaticData.StaticLists.TimeTranslation["Day"];
+            CurrentMission.TimeLimit = null;
+            CurrentMission.MaxWanted = 5;
+            CurrentMission.MinWanted = 0;
+
             CurrentMission.Vehicles = new List<SerializableVehicle>();
             CurrentMission.Actors = new List<SerializablePed>();
             CurrentMission.Objects = new List<SerializableObject>();
@@ -288,10 +330,29 @@ namespace ContentCreator.Editor
             CurrentMission.Objectives = new List<SerializableObjective>();
             CurrentMission.Pickups = new List<SerializablePickup>();
             CurrentMission.ObjectiveNames = new string[301];
+
+            CurrentMission.Cutscenes = new List<SerializableCutscene>();
             menuDirty = true;
         }
 
         private bool menuDirty;
+
+        public MissionData ReadMission(string path)
+        {
+            if (!File.Exists(path) && File.Exists(path + ".xml"))
+                path += ".xml";
+            if (!File.Exists(path))
+            {
+                Game.DisplayNotification("File not found.");
+                return null;
+            }
+
+            var serializer = new XmlSerializer(typeof(MissionData));
+            MissionData tmpMiss = null;
+            using (var stream = File.OpenRead(path))
+                tmpMiss = (MissionData)serializer.Deserialize(stream);
+            return tmpMiss;
+        }
 
         public void LoadMission(string path)
         {
@@ -513,6 +574,16 @@ namespace ContentCreator.Editor
                 _menuPool.Add(nestMenu);
                 Children.Add(nestMenu);
                 _placementMenu = nestMenu;
+            }
+
+            {
+                var nestItem = new NativeMenuItem("Cutscenes");
+                _missionMenu.AddItem(nestItem);
+                _missionMenu.BindMenuToItem(_cutsceneUi.CutsceneMenus, nestItem);
+                nestItem.Activated += (sender, item) =>
+                {
+                    _cutsceneUi.Enter();
+                };
             }
 
             {
@@ -847,6 +918,17 @@ namespace ContentCreator.Editor
             }
         }
 
+        private void CheckMenusForAlerts()
+        {
+            foreach (var pair in _missionMenu.Children)
+            {
+                if(pair.Value.MenuItems.Any(m => m.RightBadge == NativeMenuItem.BadgeStyle.Alert))
+                    pair.Key?.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                else
+                    pair.Key?.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+            }
+        }
+
         public SerializablePed CreatePed(Model model, Vector3 pos, float heading)
         {
             var tmpPed = new Ped(model, pos, heading);
@@ -877,9 +959,9 @@ namespace ContentCreator.Editor
             var tmpObj = new SerializableActorObjective();
             tmpObj.SetPed(tmpPed);
             tmpObj.SpawnAfter = 0;
-            tmpObj.ActivateAfter = 1;
-            tmpObj.Behaviour = 0;
-            tmpObj.RelationshipGroup = 3;
+            tmpObj.ActivateAfter = 0;
+            tmpObj.Behaviour = 2;
+            tmpObj.RelationshipGroup = 5;
             tmpObj.WeaponAmmo = 9999;
             tmpObj.WeaponHash = 0;
             tmpObj.Health = 200;
@@ -901,7 +983,7 @@ namespace ContentCreator.Editor
             var tmpObj = new SerializableVehicleObjective();
             tmpObj.SetVehicle(tmpVeh);
             tmpObj.SpawnAfter = 0;
-            tmpObj.ActivateAfter = 1;
+            tmpObj.ActivateAfter = 0;
             tmpObj.Health = 1000;
             CurrentMission.Objectives.Add(tmpObj);
             return tmpObj;
@@ -972,7 +1054,12 @@ namespace ContentCreator.Editor
             tmpObj.RemoveAfter = 0;
             tmpObj.Respawn = false;
             tmpObj.Ammo = 9999;
-            tmpObj.ModelHash = weaponHash;
+            tmpObj.ModelHash = weaponHash;/*
+            var firstOrDefault = StaticData.PickupData.Database[
+                StaticData.PickupData.Database.FirstOrDefault(pair => pair.Value.Any(tup => tup.Item2 == weaponHash))
+                    .Key].FirstOrDefault(tup => tup.Item2 == weaponHash);
+            if (firstOrDefault != null)
+                tmpObj.PickupHash = firstOrDefault.Item3;*/
             CurrentMission.Pickups.Add(tmpObj);
             return tmpObj;
         }
@@ -988,10 +1075,16 @@ namespace ContentCreator.Editor
             var tmpObj = new SerializablePickupObjective();
             tmpObj.SetObject(tmpObject);
             tmpObj.SpawnAfter = 0;
-            tmpObj.ActivateAfter = 1;
+            tmpObj.ActivateAfter = 0;
             tmpObj.Respawn = false;
             tmpObj.Ammo = 9999;
-            tmpObj.ModelHash = weaponHash;
+            tmpObj.ModelHash = weaponHash;/*
+            var firstOrDefault = StaticData.PickupData.Database[
+               StaticData.PickupData.Database.FirstOrDefault(pair => pair.Value.Any(tup => tup.Item2 == weaponHash))
+                   .Key].FirstOrDefault(tup => tup.Item2 == weaponHash);
+            if (firstOrDefault != null)
+                tmpObj.PickupHash =
+                    firstOrDefault.Item3;*/
             CurrentMission.Objectives.Add(tmpObj);
             return tmpObj;
         }
@@ -1000,7 +1093,7 @@ namespace ContentCreator.Editor
         {
             var tmpObj = new SerializableMarker();
             tmpObj.SpawnAfter = 0;
-            tmpObj.ActivateAfter = 1;
+            tmpObj.ActivateAfter = 0;
             tmpObj.Alpha = col.A;
             tmpObj.Color = new Vector3(col.R, col.G, col.B);
             tmpObj.Scale = scale;
@@ -1020,6 +1113,7 @@ namespace ContentCreator.Editor
             }
             else
             {
+                CheckMenusForAlerts();
                 _menuPool.ProcessMenus();
                 Children.ForEach(x => x.Process());
                 if (_propertiesMenu != null)
@@ -1029,6 +1123,7 @@ namespace ContentCreator.Editor
                     ((UIMenu)_propertiesMenu).ProcessMouse();
                     ((UIMenu)_propertiesMenu).Draw();
                 }
+                _cutsceneUi.Process();
             }
             if (IsInMainMenu)
             {
@@ -1146,8 +1241,8 @@ namespace ContentCreator.Editor
 
 
 
-                MainCamera.Rotation = new Rotator((MainCamera.Rotation.Pitch + mouseY).Clamp(-85f, -30f), 0f,
-                    MainCamera.Rotation.Yaw + mouseX);
+                MainCamera.Rotation = new Rotator((MainCamera.Rotation.Pitch + mouseY).Clamp(CameraClampMin, CameraClampMax), 0f,
+                    MainCamera.Rotation.Yaw + mouseX); 
 
                 var dir = Util.RotationToDirection(new Vector3(MainCamera.Rotation.Pitch, MainCamera.Rotation.Roll,
                         MainCamera.Rotation.Yaw));

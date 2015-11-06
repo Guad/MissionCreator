@@ -1,0 +1,64 @@
+﻿using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using Rage;
+
+namespace ContentCreator.StaticData
+{
+    public static class RelationshipGroups
+    {
+        public static Dictionary<int, RelationshipGroup> Groups;
+
+        public static void Init()
+        {
+            Groups = new Dictionary<int, RelationshipGroup>();
+
+
+            {
+                var group = new RelationshipGroup("CONTENTCREATOR_RESPECT");
+                Game.SetRelationshipBetweenRelationshipGroups(Game.LocalPlayer.Character.RelationshipGroup, group, Relationship.Respect);
+                Game.SetRelationshipBetweenRelationshipGroups(group, Game.LocalPlayer.Character.RelationshipGroup, Relationship.Respect);
+                Groups.Add(1, group);
+            }
+
+            {
+                var group = new RelationshipGroup("CONTENTCREATOR_LIKE");
+                Game.SetRelationshipBetweenRelationshipGroups(Game.LocalPlayer.Character.RelationshipGroup, group, Relationship.Like);
+                Game.SetRelationshipBetweenRelationshipGroups(group, Game.LocalPlayer.Character.RelationshipGroup, Relationship.Like);
+                Groups.Add(2, group);
+            }
+
+            {
+                var group = new RelationshipGroup("CONTENTCREATOR_NEUTRAL");
+                Game.SetRelationshipBetweenRelationshipGroups(Game.LocalPlayer.Character.RelationshipGroup, group, Relationship.Neutral);
+                Game.SetRelationshipBetweenRelationshipGroups(group, Game.LocalPlayer.Character.RelationshipGroup, Relationship.Neutral);
+                Groups.Add(3, group);
+            }
+
+            {
+                var group = new RelationshipGroup("CONTENTCREATOR_DISLIKE");
+                Game.SetRelationshipBetweenRelationshipGroups(Game.LocalPlayer.Character.RelationshipGroup, group, Relationship.Dislike);
+                Game.SetRelationshipBetweenRelationshipGroups(group, Game.LocalPlayer.Character.RelationshipGroup, Relationship.Dislike);
+                Groups.Add(4, group);
+            }
+
+            {
+                var group = new RelationshipGroup("CONTENTCREATOR_HATE");
+                Game.SetRelationshipBetweenRelationshipGroups(Game.LocalPlayer.Character.RelationshipGroup, group, Relationship.Hate);
+                Game.SetRelationshipBetweenRelationshipGroups(group, Game.LocalPlayer.Character.RelationshipGroup, Relationship.Hate);
+                Groups.Add(5, group);
+            }
+
+
+            {
+                RelationshipGroup group1;
+                RelationshipGroup group2;
+                group1 = new RelationshipGroup("CONTENTCREATOR_GROUP1");
+                group2 = new RelationshipGroup("CONTENTCREATOR_GROUP2");
+                Game.SetRelationshipBetweenRelationshipGroups(group2, group1, Relationship.Hate);
+                Game.SetRelationshipBetweenRelationshipGroups(group1, group2, Relationship.Hate);
+                Groups.Add(6, group1);
+                Groups.Add(7, group2);
+            }
+        }
+    }
+}

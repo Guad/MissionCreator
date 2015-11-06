@@ -12,6 +12,9 @@ namespace ContentCreator.SerializableData.Objectives
         public int Health { get; set; }
         public int Armor { get; set; }
 
+        public bool ShowHealthBar { get; set; }
+        public string Name { get; set; }
+
         public bool SpawnInVehicle { get; set; }
         public int VehicleSeat { get; set; }
 

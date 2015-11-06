@@ -45,11 +45,11 @@ namespace ContentCreator.Editor.NestedMenus
 
             #region ObjectiveIndex
             {
-                var item = new MenuListItem("Objective Index", StaticData.StaticLists.ObjectiveIndexList, actor.ActivateAfter-1);
+                var item = new MenuListItem("Objective Index", StaticData.StaticLists.ObjectiveIndexList, actor.ActivateAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
-                    actor.ActivateAfter = index + 1;
+                    actor.ActivateAfter = index;
 
 
                     if (string.IsNullOrEmpty(Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter]))
@@ -222,6 +222,58 @@ namespace ContentCreator.Editor.NestedMenus
 
             }
             #endregion
+
+            #region Show Health Bar
+            {
+                var item = new MenuCheckboxItem("Show Healthbar", actor.ShowHealthBar);
+                AddItem(item);
+
+                item.CheckboxEvent += (sender, @checked) =>
+                {
+                    actor.ShowHealthBar = @checked;
+                    MenuItems[6].Enabled = @checked;
+                };
+            }
+            #endregion
+
+            #region Bar Name
+            {
+                var item = new NativeMenuItem("Healthbar Label");
+                AddItem(item);
+
+                if (!actor.ShowHealthBar)
+                    item.Enabled = false;
+
+                if (string.IsNullOrEmpty(actor.Name) && actor.ShowHealthBar)
+                    actor.Name = "HEALTH";
+                if (actor.ShowHealthBar)
+                    item.SetRightLabel(actor.Name.Length > 20 ? actor.Name.Substring(0, 20) : actor.Name);
+
+
+                item.Activated += (sender, selectedItem) =>
+                {
+                    GameFiber.StartNew(delegate
+                    {
+                        ResetKey(Common.MenuControls.Back);
+                        Editor.DisableControlEnabling = true;
+                        string title = Util.GetUserInput();
+                        if (string.IsNullOrEmpty(title))
+                        {
+                            actor.Name = "HEALTH";
+                            item.SetRightLabel(actor.Name.Length > 20 ? actor.Name.Substring(0, 20) : actor.Name);
+                            SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
+                            Editor.DisableControlEnabling = false;
+                            return;
+                        }
+                        title = Regex.Replace(title, "-=", "~");
+                        actor.Name = title;
+                        item.SetRightLabel(actor.Name.Length > 20 ? actor.Name.Substring(0, 20) : actor.Name);
+                        SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
+                    });
+                };
+            }
+            #endregion
+
 
             RefreshIndex();
         }

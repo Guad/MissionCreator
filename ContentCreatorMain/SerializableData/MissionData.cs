@@ -1,21 +1,33 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
+using ContentCreator.SerializableData.Cutscenes;
 using ContentCreator.SerializableData.Objectives;
+using Rage;
 
 namespace ContentCreator.SerializableData
 {
-    [XmlInclude(typeof(SerializableActorObjective))]
-    [XmlInclude(typeof(SerializableVehicleObjective))]
-    [XmlInclude(typeof(SerializablePickupObjective))]
     [XmlInclude(typeof(SerializableMarker))]
+    [XmlInclude(typeof(SerializableCamera))]
+    [XmlInclude(typeof(SerializableCutscene))]
+    [XmlInclude(typeof(SerializableSubtitle))]
     [XmlInclude(typeof(SerializableObjective))]
+    [XmlInclude(typeof(SerializableActorObjective))]
+    [XmlInclude(typeof(SerializablePickupObjective))]
+    [XmlInclude(typeof(SerializableVehicleObjective))]
     [Serializable]
     public class MissionData
     {
         public string Name { get; set; } 
         public string Description { get; set; }
         public string Author { get; set; }
+
+        public int MaxWanted { get; set; }
+        public int MinWanted { get; set; }
+
+        public WeatherType Weather { get; set; }
+        public int Time { get; set; }
+        public int? TimeLimit { get; set; }
 
         public List<SerializableSpawnpoint> Spawnpoints { get; set; }
 
@@ -26,5 +38,7 @@ namespace ContentCreator.SerializableData
 
         public List<SerializableObjective> Objectives { get; set; }
         public string[] ObjectiveNames { get; set; }
+
+        public List<SerializableCutscene> Cutscenes { get; set; }
     }
 }

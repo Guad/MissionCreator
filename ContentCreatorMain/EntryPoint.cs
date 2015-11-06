@@ -13,12 +13,15 @@ namespace ContentCreator
     public static class EntryPoint
     {
         public static Editor.Editor MainEditor;
+        public static MissionPlayer MissionPlayer;
 
         public static void Main()
         {
             StaticData.StaticLists.Init();
+            StaticData.RelationshipGroups.Init();
 
             MainEditor = new Editor.Editor();
+            MissionPlayer = new MissionPlayer();
 
             Game.FrameRender += FrameRender;
 
@@ -36,6 +39,7 @@ namespace ContentCreator
 
         public static void FrameRender(object sender, GraphicsEventArgs e)
         {
+            MissionPlayer.Tick();
             MainEditor.Tick(e);
             if (Game.IsControlJustPressed(0, GameControl.Context)) // FOR DEBUGGING PURPOSE ONLY
             {

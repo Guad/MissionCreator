@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using Rage;
 
 namespace ContentCreator.StaticData
 {
@@ -68,8 +69,27 @@ namespace ContentCreator.StaticData
             "Never",
         };
 
-        public static List<dynamic> ObjectiveIndexList =
-            new List<dynamic>(Enumerable.Range(1, 300).Select(n => (dynamic) n));
+        public static List<dynamic> WeatherTypes = new List<dynamic>(Enum.GetNames(typeof(WeatherType)));
+
+        public static List<dynamic> TimesList = new List<dynamic>
+        {
+            "Day",
+            "Noon",
+            "Night",
+            "Sunrise",
+        };
+
+        public static Dictionary<string, int> TimeTranslation = new Dictionary<string, int>
+        {
+            {"Day", 16},
+            {"Noon", 20},
+            {"Night", 02},
+            {"Sunrise", 07},
+        };
+
+        public static List<dynamic> ObjectiveIndexList = new List<dynamic>(Enumerable.Range(0, 300).Select(n => (dynamic) n));
+
+        public static List<dynamic> WantedList = new List<dynamic>(Enumerable.Range(0, 6).Select(n => (dynamic)n));
 
         public static List<dynamic> KnownColors = new List<dynamic>();
 
@@ -78,7 +98,7 @@ namespace ContentCreator.StaticData
             NumberMenu.AddRange(Enumerable.Range(0, 300).Select(n => (dynamic) n));
 
             RemoveAfterList.AddRange(Enumerable.Range(1, 300).Select(n => (dynamic) n));
-
+            
 
             var colors = (KnownColor[]) Enum.GetValues(typeof (KnownColor));
             for (var i = 28; i < colors.Length - 8; i++)

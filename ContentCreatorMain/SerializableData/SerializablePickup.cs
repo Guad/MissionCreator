@@ -4,5 +4,6 @@
     {
         public bool Respawn { get; set; }
         public int Ammo { get; set; }
+        public uint PickupHash { get; set; }
     }
 }

@@ -44,11 +44,11 @@ namespace ContentCreator.Editor.NestedMenus
 
             #region ObjectiveIndex
             {
-                var item = new MenuListItem("Objective Index", StaticData.StaticLists.ObjectiveIndexList, actor.ActivateAfter - 1);
+                var item = new MenuListItem("Objective Index", StaticData.StaticLists.ObjectiveIndexList, actor.ActivateAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
-                    actor.ActivateAfter = index + 1;
+                    actor.ActivateAfter = index;
 
 
                     if (string.IsNullOrEmpty(Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter]))

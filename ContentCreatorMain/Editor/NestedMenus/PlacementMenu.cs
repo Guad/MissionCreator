@@ -264,7 +264,7 @@ namespace ContentCreator.Editor.NestedMenus
             #region Pickups
             {
                 var item = new NativeMenuItem("Pickups");
-                var dict = StaticData.WeaponsData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
+                var dict = StaticData.PickupData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Weapon");
                 
                 menu.Build("Pistols");
@@ -282,7 +282,7 @@ namespace ContentCreator.Editor.NestedMenus
                     GameFiber.StartNew(delegate
                     {
                         var hash =
-                            StaticData.WeaponsData.Database[menu.CurrentSelectedCategory].First(
+                            StaticData.PickupData.Database[menu.CurrentSelectedCategory].First(
                                 tuple => tuple.Item1 == menu.CurrentSelectedItem).Item2;
                         
                         var pos = Game.LocalPlayer.Character.Position;
@@ -326,20 +326,26 @@ namespace ContentCreator.Editor.NestedMenus
 
 
                         var hash =
-                            StaticData.WeaponsData.Database[menu.CurrentSelectedCategory].First(
+                            StaticData.PickupData.Database[menu.CurrentSelectedCategory].First(
                                 tuple => tuple.Item1 == menu.CurrentSelectedItem).Item2;
                         
                         var pos = Game.LocalPlayer.Character.Position;
-                        var veh =
-                            World.GetEntityByHandle<Rage.Object>(NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", hash,
-                                                                                                 9999, pos.X, pos.Y, pos.Z,
-                                                                                                 true, 3f));
+                        var handle = NativeFunction.CallByName<uint>("CREATE_WEAPON_OBJECT", hash,
+                            9999, pos.X, pos.Y, pos.Z,
+                            true, 3f);
+                        Game.DisplayNotification(handle + " " +  hash);
+                        Rage.Object veh;
+                        if (handle != 0)
+                        {
+                            veh = World.GetEntityByHandle<Rage.Object>(handle);
+                            veh.Heading = heading;
+                            veh.IsPositionFrozen = true;
+                            Editor.PlacedWeaponHash = hash;
+                            Editor.MarkerData.RepresentedBy = veh;
+                            NativeFunction.CallByName<uint>("SET_ENTITY_COLLISION", veh.Handle.Value, false, 0);
+                        }
+                        
 
-                        veh.Heading = heading;
-                        veh.IsPositionFrozen = true;
-                        Editor.PlacedWeaponHash = hash;
-                        Editor.MarkerData.RepresentedBy = veh;
-                        NativeFunction.CallByName<uint>("SET_ENTITY_COLLISION", veh.Handle.Value, false, 0);
                         //var dims = Util.GetModelDimensions(veh.Model);
                         //Editor.RingData.HeightOffset = 1f;
                         //Editor.MarkerData.HeightOffset = 1f;
@@ -434,6 +440,15 @@ namespace ContentCreator.Editor.NestedMenus
 
         public void Process()
         {
+            if (Editor.CurrentMission?.Spawnpoints?.Count == 0)
+            {
+                MenuItems[0]?.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);    
+            }
+            else
+            {
+                MenuItems[0]?.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+            }
+
             Children.ForEach(m =>
             {
                 m.ProcessControl();

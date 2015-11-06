@@ -7,6 +7,7 @@ namespace ContentCreator.SerializableData.Objectives
         public bool Respawn { get; set; }
         public int Ammo { get; set; }
         public uint ModelHash { get; set; }
+        public uint PickupHash { get; set; }
 
         private Object _veh;
 

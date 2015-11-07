@@ -1,4 +1,4 @@
-﻿namespace ContentCreator.SerializableData.Objectives
+﻿namespace MissionCreator.SerializableData.Objectives
 {
     public class SerializableTimer : SerializableObjective
     {

@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Rage;
 
-namespace ContentCreator.StaticData
+namespace MissionCreator.StaticData
 {
     public static class StaticLists
     {

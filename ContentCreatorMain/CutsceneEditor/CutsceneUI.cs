@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
-using ContentCreator.SerializableData;
-using ContentCreator.SerializableData.Cutscenes;
+using MissionCreator.SerializableData;
+using MissionCreator.SerializableData.Cutscenes;
 using Rage;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 
-namespace ContentCreator.CutsceneEditor
+namespace MissionCreator.CutsceneEditor
 {
     public class CutsceneUi
     {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ContentCreator.SerializableData.Cutscenes
+namespace MissionCreator.SerializableData.Cutscenes
 {
     public class SerializableCutscene
     {

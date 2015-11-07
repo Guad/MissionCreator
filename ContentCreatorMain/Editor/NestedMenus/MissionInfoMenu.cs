@@ -2,17 +2,17 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using ContentCreator.SerializableData;
+using MissionCreator.SerializableData;
 using Rage;
 using Rage.Native;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 
-namespace ContentCreator.Editor.NestedMenus
+namespace MissionCreator.Editor.NestedMenus
 {
     public class MissionInfoMenu : UIMenu, INestedMenu
     {
-        public MissionInfoMenu(MissionData data) : base("Content Creator", "MISSION DETAILS")
+        public MissionInfoMenu(MissionData data) : base("MissionCreator", "MISSION DETAILS")
         {
             MouseEdgeEnabled = false;
             MouseControlsEnabled = false;

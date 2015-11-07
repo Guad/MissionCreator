@@ -1,7 +1,7 @@
 ﻿using System.Drawing;
 using Rage;
 
-namespace ContentCreator.SerializableData
+namespace MissionCreator.SerializableData
 {
     public class SerializableVehicle : SerializableObject
     {

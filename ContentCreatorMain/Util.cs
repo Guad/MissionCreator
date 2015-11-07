@@ -3,11 +3,16 @@ using Rage;
 using Rage.Native;
 using System.Drawing;
 
-namespace ContentCreator
+namespace MissionCreator
 {
     public static class Util
     {
         public static bool IsGamepadEnabled => !NativeFunction.CallByHash<bool>(0xA571D46727E2B718, 0);
+
+        public static string GetControlButtonId(GameControl cont)
+        {
+            return (string)NativeFunction.CallByHash(0x0499D7B09FC9B407, typeof (string), 2, (int) cont, 0);
+        }
 
         public static void DrawMarker(int type, Vector3 pos, Vector3 rot, Vector3 scale, Color color)
         {
@@ -16,12 +21,13 @@ namespace ContentCreator
                     2, false, false, false, false);
         }
 
-        public unsafe static Vector3 GetModelDimensions(Model model)
+        public unsafe static void GetModelDimensions(Model model, out Vector3 minimum, out Vector3 maximum)
         {
-            Vector3 *min;
-            Vector3 *max;
+            Vector3 min;
+            Vector3 max;
             NativeFunction.CallByName<uint>("GET_MODEL_DIMENSIONS", model.Hash, &min, &max);
-            return (Vector3.Subtract(*max, *min));
+            minimum = min;
+            maximum = max;
         }
 
         public static Model RequestModel(uint hash)

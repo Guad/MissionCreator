@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ContentCreator.SerializableData.Cutscenes
+namespace MissionCreator.SerializableData.Cutscenes
 {
     public class SerializableSubtitle
     {

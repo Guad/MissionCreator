@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
-using ContentCreator.Editor.NestedMenus;
-using ContentCreator.SerializableData.Cutscenes;
+using MissionCreator.Editor.NestedMenus;
+using MissionCreator.SerializableData.Cutscenes;
 using Rage;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 
-namespace ContentCreator.CutsceneEditor
+namespace MissionCreator.CutsceneEditor
 {
     public class CreateCutsceneMenu : UIMenu, INestedMenu
     {

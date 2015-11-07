@@ -7,8 +7,8 @@
     <ProjectGuid>{4179870B-79D6-405A-9C9E-06AE4653E8B0}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ContentCreator</RootNamespace>
-    <AssemblyName>ContentCreator</AssemblyName>
+    <RootNamespace>MissionCreator</RootNamespace>
+    <AssemblyName>MissionCreator</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -30,6 +30,8 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="RAGENativeUI">

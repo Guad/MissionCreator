@@ -6,7 +6,7 @@ using Rage;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 
-namespace ContentCreator.Editor.NestedMenus
+namespace MissionCreator.Editor.NestedMenus
 {
     public class CategorySelectionMenu : UIMenu
     {
@@ -17,7 +17,7 @@ namespace ContentCreator.Editor.NestedMenus
 
         public event EventHandler SelectionChanged;
 
-        public CategorySelectionMenu(Dictionary<string, string[]> items, string itemName, string caption = "PLACE ENTITY") : base("Content Creator", caption)
+        public CategorySelectionMenu(Dictionary<string, string[]> items, string itemName, string caption = "PLACE ENTITY") : base("MissionCreator", caption)
         {
             MouseEdgeEnabled = false;
             MouseControlsEnabled = false;

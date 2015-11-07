@@ -1,6 +1,6 @@
 ﻿using Rage;
 
-namespace ContentCreator.SerializableData
+namespace MissionCreator.SerializableData
 {
     public class SerializableObject : ISerializableEntity
     {

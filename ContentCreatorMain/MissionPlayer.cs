@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
-using ContentCreator.SerializableData;
-using ContentCreator.SerializableData.Objectives;
-using ContentCreator.UI;
+using MissionCreator.SerializableData;
+using MissionCreator.SerializableData.Objectives;
+using MissionCreator.UI;
 using Rage;
 using Rage.Native;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 
-namespace ContentCreator
+namespace MissionCreator
 {
     public class MissionPlayer
     {
@@ -29,7 +29,6 @@ namespace ContentCreator
         public TimerBars TimerBars;
         #endregion
 
-        private Group _playerGroup;
         private Model _oldModel;
         private Vector3 _oldPos;
 
@@ -39,8 +38,6 @@ namespace ContentCreator
             CurrentObjectives = new List<SerializableObjective>();
             CurrentMission = mission;
             IsMissionPlaying = true;
-
-            _playerGroup = new Group(Game.LocalPlayer.Character);
 
             if (mission.Objectives.Count == 0)
             {
@@ -184,7 +181,7 @@ namespace ContentCreator
                 newv.Rotation = veh.Rotation;
                 GameFiber.StartNew(delegate
                 {
-                    while (IsMissionPlaying && (veh.RemoveAfter == 0 || veh.RemoveAfter < CurrentStage))
+                    while (IsMissionPlaying && (veh.RemoveAfter == 0 || veh.RemoveAfter > CurrentStage))
                     {
                         if (veh.FailMissionOnDeath && newv.IsDead)
                         {
@@ -304,8 +301,11 @@ namespace ContentCreator
 
                     if (actor.RelationshipGroup == 0)
                     {
-                        _playerGroup.AddMember(ped);
+                        ped.RelationshipGroup = StaticData.RelationshipGroups.Groups[1];
                         blip.Color = Color.DodgerBlue;
+
+                        NativeFunction.CallByName<uint>("REMOVE_PED_FROM_GROUP", ped.Handle.Value);
+                        NativeFunction.CallByName<uint>("SET_PED_AS_GROUP_MEMBER", ped.Handle.Value, NativeFunction.CallByName<int>("GET_PED_GROUP_INDEX", Game.LocalPlayer.Character.Handle.Value));
                     }
                     else
                     {
@@ -326,8 +326,10 @@ namespace ContentCreator
                         ped.Tasks.FightAgainstClosestHatedTarget(100f);
                     else if (actor.Behaviour == 2)
                         NativeFunction.CallByName<uint>("TASK_GUARD_CURRENT_POSITION", ped.Handle.Value, 10, 10, 1);
+                    else if (actor.Behaviour == 0)
+                        ped.Tasks.Clear();
 
-                    while (IsMissionPlaying && (actor.RemoveAfter == 0 || actor.RemoveAfter < CurrentStage))
+                    while (IsMissionPlaying && (actor.RemoveAfter == 0 || actor.RemoveAfter > CurrentStage))
                     {
                         if (actor.FailMissionOnDeath && ped.IsDead)
                         {
@@ -351,7 +353,7 @@ namespace ContentCreator
                     prop.Position = o.Position;
                     prop.Rotation = o.Rotation;
 
-                    while (IsMissionPlaying && (o.RemoveAfter == 0 || o.RemoveAfter < CurrentStage))
+                    while (IsMissionPlaying && (o.RemoveAfter == 0 || o.RemoveAfter > CurrentStage))
                     {
                         GameFiber.Yield();
                     }
@@ -370,7 +372,7 @@ namespace ContentCreator
                         1, pickup.Ammo, 2, 1, 0);
 
                     int counter = 0;
-                    while (IsMissionPlaying && (pickup.RemoveAfter == 0 || pickup.RemoveAfter < CurrentStage))
+                    while (IsMissionPlaying && (pickup.RemoveAfter == 0 || pickup.RemoveAfter > CurrentStage))
                     {
                         var alpha = 40 * (Math.Sin(Util.DegToRad(counter % 180)));
                         Util.DrawMarker(28, pickup.Position, new Vector3(), new Vector3(0.75f, 0.75f, 0.75f), Color.FromArgb((int)alpha, 10, 10, 230));
@@ -412,7 +414,9 @@ namespace ContentCreator
 
                 if (actor.RelationshipGroup == 0)
                 {
-                    _playerGroup.AddMember(ped);
+                    NativeFunction.CallByName<uint>("REMOVE_PED_FROM_GROUP", ped.Handle.Value);
+                    NativeFunction.CallByName<uint>("SET_PED_AS_GROUP_MEMBER", ped.Handle.Value, NativeFunction.CallByName<int>("GET_PED_GROUP_INDEX", Game.LocalPlayer.Character.Handle.Value));
+                    ped.RelationshipGroup = StaticData.RelationshipGroups.Groups[1];
                 }
                 else
                 {
@@ -443,6 +447,8 @@ namespace ContentCreator
                         ped.Tasks.FightAgainstClosestHatedTarget(100f);
                     else if (actor.Behaviour == 2)
                         NativeFunction.CallByName<uint>("TASK_GUARD_CURRENT_POSITION", ped.Handle.Value, 10, 10, 1);
+                    else if(actor.Behaviour == 0)
+                        ped.Tasks.Clear();
 
                 
                     while (!ped.IsDead && IsMissionPlaying)

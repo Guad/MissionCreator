@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ContentCreator.StaticData
+namespace MissionCreator.StaticData
 {
     public static class CheckpointData
     {
@@ -9,8 +9,12 @@ namespace ContentCreator.StaticData
         { // 3rd is height offset
             {"Marker", new []
             {
-               new Tuple<string, int, float>("Corona", 0, 1f),
-               new Tuple<string, int, float>("Entrance", 1, 0f), 
+               new Tuple<string, int, float>("Cylinder", 1, 0f), 
+               new Tuple<string, int, float>("Cone", 0, 1f),
+               new Tuple<string, int, float>("Chevron", 21, 1f),
+               new Tuple<string, int, float>("Flag", 4, 1f),
+               new Tuple<string, int, float>("Lap", 24, 1f),
+               new Tuple<string, int, float>("Sphere", 28, 1f),
             }},
         };
     }

@@ -2,7 +2,7 @@
 using System.Drawing;
 using Rage;
 
-namespace ContentCreator.Editor
+namespace MissionCreator.Editor
 {
     public enum RingType
     {

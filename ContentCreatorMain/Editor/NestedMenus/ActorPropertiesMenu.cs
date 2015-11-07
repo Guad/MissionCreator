@@ -7,7 +7,7 @@ using Rage.Native;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 
-namespace ContentCreator.Editor.NestedMenus
+namespace MissionCreator.Editor.NestedMenus
 {
     public class ActorPropertiesMenu : UIMenu, INestedMenu
     {
@@ -63,7 +63,7 @@ namespace ContentCreator.Editor.NestedMenus
                 var item = new NativeMenuItem("Weapon");
                 var dict = StaticData.WeaponsData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Weapon", true, "SELECT WEAPON");
-                menu.Build("Pistols");
+                menu.Build("Melee");
                 Children.Add(menu);
                 AddItem(item);
                 BindMenuToItem(menu, item);

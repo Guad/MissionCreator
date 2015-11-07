@@ -1,7 +1,7 @@
 ﻿using System;
 using Rage;
 
-namespace ContentCreator.SerializableData.Cutscenes
+namespace MissionCreator.SerializableData.Cutscenes
 {
     public enum InterpolationStyle
     {

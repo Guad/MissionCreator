@@ -4,18 +4,18 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
-using ContentCreator.CutsceneEditor;
-using ContentCreator.Editor.NestedMenus;
-using ContentCreator.SerializableData;
-using ContentCreator.SerializableData.Cutscenes;
-using ContentCreator.SerializableData.Objectives;
+using MissionCreator.CutsceneEditor;
+using MissionCreator.Editor.NestedMenus;
+using MissionCreator.SerializableData;
+using MissionCreator.SerializableData.Cutscenes;
+using MissionCreator.SerializableData.Objectives;
 using Rage;
 using Rage.Native;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 using Object = Rage.Object;
 
-namespace ContentCreator.Editor
+namespace MissionCreator.Editor
 {
     public class Editor
     {
@@ -26,7 +26,7 @@ namespace ContentCreator.Editor
             #region NativeUI Initialization
             _menuPool = new MenuPool();
             #region Main Menu
-            _mainMenu = new UIMenu("Content Creator", "MAIN MENU");
+            _mainMenu = new UIMenu("Mission Creator", "MAIN MENU");
             _mainMenu.ResetKey(Common.MenuControls.Back);
             _mainMenu.ResetKey(Common.MenuControls.Up);
             _mainMenu.ResetKey(Common.MenuControls.Down);
@@ -92,7 +92,7 @@ namespace ContentCreator.Editor
             }
 
             {
-                var menuItem = new NativeMenuItem("Exit to Grand Theft Auto V", "Leave the Content Creator");
+                var menuItem = new NativeMenuItem("Exit to Grand Theft Auto V", "Leave the Mission Creator");
                 menuItem.Activated += (sender, item) =>
                 {
                     if(!EntryPoint.MissionPlayer.IsMissionPlaying)
@@ -124,7 +124,7 @@ namespace ContentCreator.Editor
             #endregion
 
             #region Editor Menu
-            _missionMenu = new UIMenu("Content Creator", "MISSION MAIN MENU");
+            _missionMenu = new UIMenu("Mission Creator", "MISSION MAIN MENU");
             _missionMenu.ResetKey(Common.MenuControls.Back);
             _missionMenu.MouseControlsEnabled = false;
             _missionMenu.ResetKey(Common.MenuControls.Up);
@@ -177,6 +177,20 @@ namespace ContentCreator.Editor
             CameraClampMin = -85f;
 
             _blips = new List<Blip>();
+
+            _instructButts = new Scaleform();
+
+            if (!Directory.Exists(basePath))
+            {
+                try
+                {
+                    Directory.CreateDirectory(basePath);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    Game.DisplayNotification("~r~~h~ERROR~h~~n~~w~Access denied for folder creation. Run as administrator.");
+                }
+            }
         }
 
         #region NativeUI
@@ -217,8 +231,10 @@ namespace ContentCreator.Editor
         private INestedMenu _propertiesMenu;
         private SerializableMarker _selectedMarker;
         private List<Blip> _blips;
+        private const string basePath = "Plugins\\Missions";
+        private Scaleform _instructButts;
         #endregion
-        
+
         private void EnterFreecam()
         {
             Camera.DeleteAllCameras();
@@ -363,6 +379,7 @@ namespace ContentCreator.Editor
 
         public MissionData ReadMission(string path)
         {
+            path = basePath + "\\" + path;
             if (!File.Exists(path) && File.Exists(path + ".xml"))
                 path += ".xml";
             if (!File.Exists(path))
@@ -380,6 +397,7 @@ namespace ContentCreator.Editor
 
         public void LoadMission(string path)
         {
+            path = basePath + "\\" + path;
             if (!File.Exists(path) && File.Exists(path + ".xml"))
                 path += ".xml";
             if (!File.Exists(path))
@@ -516,6 +534,8 @@ namespace ContentCreator.Editor
 
         public void SaveMission(MissionData mission, string path)
         {
+            path = basePath + "\\" + path;
+
             foreach (var ped in mission.Actors)
             {
                 ped.Position = ped.GetEntity().Position;
@@ -954,6 +974,7 @@ namespace ContentCreator.Editor
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.FrontendLb);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.FrontendRb);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.HUDSpecial);
+            NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.Duck);
         }
 
         private void EnableMenuControls()
@@ -1183,6 +1204,38 @@ namespace ContentCreator.Editor
             return tmpObj;
         }
 
+        
+        private void DrawInstructionalButtonsScaleform()
+        {
+            _instructButts.Load("instructional_buttons");
+            _instructButts.CallFunction("CLEAR_ALL");
+            _instructButts.CallFunction("TOGGLE_MOUSE_BUTTONS", 0);
+            _instructButts.CallFunction("CREATE_CONTAINER");
+            _instructButts.CallFunction("SET_DATA_SLOT", 0, Util.GetControlButtonId(GameControl.CellphoneSelect), "Select");
+            _instructButts.CallFunction("SET_DATA_SLOT", 1, Util.GetControlButtonId(GameControl.Attack), "Item Properties");
+            _instructButts.CallFunction("SET_DATA_SLOT", 2, Util.GetControlButtonId(GameControl.FrontendPause), "Switch Camera");
+            if (Util.IsGamepadEnabled)
+            {
+                _instructButts.CallFunction("SET_DATA_SLOT", 3, Util.GetControlButtonId(GameControl.CreatorRT), "");
+                _instructButts.CallFunction("SET_DATA_SLOT", 4, Util.GetControlButtonId(GameControl.CreatorLT), "Zoom");
+
+                _instructButts.CallFunction("SET_DATA_SLOT", 7, Util.GetControlButtonId(GameControl.Duck), "Map");
+            }
+            else
+            {
+                _instructButts.CallFunction("SET_DATA_SLOT", 3, Util.GetControlButtonId(GameControl.CursorScrollUp), "");
+                _instructButts.CallFunction("SET_DATA_SLOT", 4, Util.GetControlButtonId(GameControl.CursorScrollDown), "Zoom");
+
+                _instructButts.CallFunction("SET_DATA_SLOT", 7, Util.GetControlButtonId(GameControl.HUDSpecial), "Map");
+            }
+
+            _instructButts.CallFunction("SET_DATA_SLOT", 5, Util.GetControlButtonId(GameControl.FrontendRb), "");
+            _instructButts.CallFunction("SET_DATA_SLOT", 6, Util.GetControlButtonId(GameControl.FrontendLb), "Rotate");
+
+
+            _instructButts.CallFunction("DRAW_INSTRUCTIONAL_BUTTONS", -1);
+        }
+
         public void Tick(GraphicsEventArgs canvas)
         {
             if (menuDirty)
@@ -1213,8 +1266,6 @@ namespace ContentCreator.Editor
             if (!IsInEditor) return;
             NativeFunction.CallByName<uint>("DISABLE_CONTROL_ACTION", 0, (int)GameControl.FrontendPauseAlternate);
 
-
-            
             foreach (var objective in CurrentMission.Objectives)
             {
                 //TODO: Get model size
@@ -1433,7 +1484,10 @@ namespace ContentCreator.Editor
             }
 
             NativeFunction.CallByHash<uint>(0x231C8F89D0539D8F, BigMinimap, false);
-            Game.SetRadarZoomLevelThisFrame(Game.IsControlPressed(0, GameControl.HUDSpecial) ? 300 : 100);
+            if(Util.IsGamepadEnabled)
+                Game.SetRadarZoomLevelThisFrame(Game.IsControlPressed(0, GameControl.Duck) ? 300 : 100);
+            else
+                Game.SetRadarZoomLevelThisFrame(Game.IsControlPressed(0, GameControl.HUDSpecial) ? 300 : 100);
 
             if (Game.IsControlJustPressed(0, GameControl.FrontendPause) && IsInFreecam)
             {
@@ -1921,9 +1975,9 @@ namespace ContentCreator.Editor
                 _selectedMarker = null;
             }
 
-
             #endregion
 
+            DrawInstructionalButtonsScaleform();
         }
     }
 

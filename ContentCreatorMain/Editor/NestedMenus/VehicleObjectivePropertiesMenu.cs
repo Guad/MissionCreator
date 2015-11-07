@@ -3,13 +3,13 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using ContentCreator.SerializableData.Objectives;
+using MissionCreator.SerializableData.Objectives;
 using Rage;
 using Rage.Native;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 
-namespace ContentCreator.Editor.NestedMenus
+namespace MissionCreator.Editor.NestedMenus
 {
     public class VehicleObjectivePropertiesMenu : UIMenu, INestedMenu
     {

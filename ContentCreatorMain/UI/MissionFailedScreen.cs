@@ -7,7 +7,7 @@ using Rage.Native;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 
-namespace ContentCreator.UI
+namespace MissionCreator.UI
 {
     public class MissionFailedScreen
     {

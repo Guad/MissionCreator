@@ -8,7 +8,7 @@ using Rage.Native;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 
-namespace ContentCreator.Editor.NestedMenus
+namespace MissionCreator.Editor.NestedMenus
 {
     public class MarkerPropertiesMenu : UIMenu, INestedMenu
     {

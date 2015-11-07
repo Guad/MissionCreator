@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
-using ContentCreator.SerializableData.Cutscenes;
-using ContentCreator.SerializableData.Objectives;
+using MissionCreator.SerializableData.Cutscenes;
+using MissionCreator.SerializableData.Objectives;
 using Rage;
 
-namespace ContentCreator.SerializableData
+namespace MissionCreator.SerializableData
 {
     [XmlInclude(typeof(SerializableMarker))]
     [XmlInclude(typeof(SerializableCamera))]

@@ -2,17 +2,17 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using ContentCreator.SerializableData;
+using MissionCreator.SerializableData;
 using Rage;
 using Rage.Native;
 using RAGENativeUI;
 using RAGENativeUI.Elements;
 
-namespace ContentCreator.Editor.NestedMenus
+namespace MissionCreator.Editor.NestedMenus
 {
     public class ObjectivePlacementMenu : UIMenu, INestedMenu
     {
-        public ObjectivePlacementMenu(MissionData data) : base("Content Creator", "CREATE OBJECTIVE")
+        public ObjectivePlacementMenu(MissionData data) : base("MissionCreator", "CREATE OBJECTIVE")
         {
             MouseEdgeEnabled = false;
             MouseControlsEnabled = false;
@@ -35,7 +35,7 @@ namespace ContentCreator.Editor.NestedMenus
 
                 var dict = StaticData.PedData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Skin");
-                menu.Build("Gangsters");
+                menu.Build("Cops and Army");
                 Children.Add(menu);
                 AddItem(item);
                 BindMenuToItem(menu, item);
@@ -79,10 +79,13 @@ namespace ContentCreator.Editor.NestedMenus
                 {
                     GameFiber.StartNew(delegate
                     {
+                        menu.ResetKey(Common.MenuControls.Right);
+                        menu.ResetKey(Common.MenuControls.Left);
                         var heading = 0f;
                         if (Editor.MarkerData.RepresentedBy != null && Editor.MarkerData.RepresentedBy.IsValid())
                         {
                             heading = Editor.MarkerData.RepresentedBy.Heading;
+                            Editor.MarkerData.RepresentedBy.Model.Dismiss();
                             Editor.MarkerData.RepresentedBy.Delete();
                         }
                         
@@ -97,6 +100,8 @@ namespace ContentCreator.Editor.NestedMenus
                         //var dims = Util.GetModelDimensions(veh.Model);
                         //Editor.RingData.HeightOffset = 1f;
                         //Editor.MarkerData.HeightOffset = 1f;
+                        menu.SetKey(Common.MenuControls.Left, GameControl.CellphoneLeft, 0);
+                        menu.SetKey(Common.MenuControls.Right, GameControl.CellphoneRight, 0);
                     });
                 };
 
@@ -108,7 +113,7 @@ namespace ContentCreator.Editor.NestedMenus
                 var item = new NativeMenuItem("Cars");
                 var dict = StaticData.VehicleData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Vehicle");
-                menu.Build("Land");
+                menu.Build("Muscle");
                 Children.Add(menu);
                 AddItem(item);
                 BindMenuToItem(menu, item);
@@ -154,10 +159,13 @@ namespace ContentCreator.Editor.NestedMenus
                 {
                     GameFiber.StartNew(delegate
                     {
+                        menu.ResetKey(Common.MenuControls.Right);
+                        menu.ResetKey(Common.MenuControls.Left);
                         var heading = 0f;
                         if (Editor.MarkerData.RepresentedBy != null && Editor.MarkerData.RepresentedBy.IsValid())
                         {
                             heading = Editor.MarkerData.RepresentedBy.Heading;
+                            Editor.MarkerData.RepresentedBy.Model.Dismiss();
                             Editor.MarkerData.RepresentedBy.Delete();
                         }
 
@@ -170,9 +178,14 @@ namespace ContentCreator.Editor.NestedMenus
                         veh.IsPositionFrozen = true;
                         Editor.MarkerData.RepresentedBy = veh;
                         NativeFunction.CallByName<uint>("SET_ENTITY_COLLISION", veh.Handle.Value, false, 0);
-                        //var dims = Util.GetModelDimensions(veh.Model);
-                        //Editor.RingData.HeightOffset = 1f;
-                        //Editor.MarkerData.HeightOffset = 1f;
+                        Vector3 max;
+                        Vector3 min;
+                        Util.GetModelDimensions(veh.Model, out max, out min);
+                        Editor.RingData.HeightOffset = min.Z - max.Z + 0.2f;
+                        Editor.MarkerData.HeightOffset = min.Z - max.Z + 0.2f;
+
+                        menu.SetKey(Common.MenuControls.Left, GameControl.CellphoneLeft, 0);
+                        menu.SetKey(Common.MenuControls.Right, GameControl.CellphoneRight, 0);
                     });
                 };
             }

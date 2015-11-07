@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ContentCreator.StaticData
+namespace MissionCreator.StaticData
 {
     public static class ObjectData
     {

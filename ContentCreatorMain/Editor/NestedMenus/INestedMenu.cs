@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using RAGENativeUI;
 
-namespace ContentCreator.Editor.NestedMenus
+namespace MissionCreator.Editor.NestedMenus
 {
     public interface INestedMenu
     {

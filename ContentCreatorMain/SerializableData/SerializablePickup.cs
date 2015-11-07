@@ -1,4 +1,4 @@
-﻿namespace ContentCreator.SerializableData
+﻿namespace MissionCreator.SerializableData
 {
     public class SerializablePickup : SerializableObject
     {

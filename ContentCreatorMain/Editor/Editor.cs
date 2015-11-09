@@ -50,22 +50,22 @@ namespace MissionCreator.Editor
                 {
                     GameFiber.StartNew(delegate
                     {
-                        Editor.DisableControlEnabling = true;
-                        string path = Util.GetUserInput();
-                        if (string.IsNullOrEmpty(path))
+                        DisableControlEnabling = true;
+                        var newMenu = new LoadMissionMenu();
+                        _mainMenu.Visible = false;
+                        newMenu.RebuildMenu();
+                        newMenu.ParentMenu = _mainMenu;
+                        newMenu.Visible = true;
+                        while (newMenu.Visible)
                         {
-                            Editor.DisableControlEnabling = false;
-                            return;
+                            newMenu.ProcessControl();
+                            newMenu.Draw();
+                            GameFiber.Yield();
                         }
-                        Editor.DisableControlEnabling = false;
-                        var miss = ReadMission(path);
-                        if (miss == null)
-                        {
-                            Game.DisplayNotification("Mission not found.");
-                            return;
-                        }
+                        DisableControlEnabling = false;
+                        if (newMenu.ReturnedData == null) return;
                         LeaveEditor();
-                        EntryPoint.MissionPlayer.Load(miss);
+                        EntryPoint.MissionPlayer.Load(newMenu.ReturnedData);
                     });
                 };
                 _mainMenu.AddItem(menuItem);
@@ -77,15 +77,21 @@ namespace MissionCreator.Editor
                 {
                     GameFiber.StartNew(delegate
                     {
-                        Editor.DisableControlEnabling = true;
-                        string path = Util.GetUserInput();
-                        if (string.IsNullOrEmpty(path))
+                        DisableControlEnabling = true;
+                        _mainMenu.Visible = false;
+                        var newMenu = new LoadMissionMenu();
+                        newMenu.RebuildMenu();
+                        newMenu.ParentMenu = _mainMenu;
+                        newMenu.Visible = true;
+                        while (newMenu.Visible)
                         {
-                            Editor.DisableControlEnabling = false;
-                            return;
+                            newMenu.ProcessControl();
+                            newMenu.Draw();
+                            GameFiber.Yield();
                         }
-                        Editor.DisableControlEnabling = false;
-                        LoadMission(path);
+                        DisableControlEnabling = false;
+                        if (newMenu.ReturnedData == null) return;
+                        LoadMission(newMenu.ReturnedData);
                     });
                 };
                 _mainMenu.AddItem(menuItem);
@@ -205,7 +211,7 @@ namespace MissionCreator.Editor
         public bool IsInEditor { get; set; }
         public bool IsInMainMenu { get; set; }
         public bool IsInFreecam { get; set; }
-        public Camera MainCamera { get; set; }
+        public static Camera MainCamera { get; set; }
         public bool BigMinimap { get; set; }
         public static bool DisableControlEnabling { get; set; }
         public static bool EnableBasicMenuControls { get; set; }
@@ -247,7 +253,6 @@ namespace MissionCreator.Editor
             _missionMenu.Visible = true;
 
             IsInFreecam = true;
-            IsInMainMenu = false;
             IsInEditor = true;
             BigMinimap = true;
             DisableControlEnabling = false;
@@ -256,7 +261,6 @@ namespace MissionCreator.Editor
 
         public void EnterEditor()
         {
-            IsInMainMenu = true;
             _mainMenu.Visible = true;
             _mainMenu.RefreshIndex();
         }
@@ -265,6 +269,8 @@ namespace MissionCreator.Editor
         {
             if (CurrentMission != null)
             {
+                UnloadInteriors(CurrentMission);
+
                 CurrentMission.Vehicles.ForEach(v =>
                 {
                     if (v.GetEntity() != null && v.GetEntity().IsValid())
@@ -363,6 +369,7 @@ namespace MissionCreator.Editor
             CurrentMission.MaxWanted = 5;
             CurrentMission.MinWanted = 0;
 
+            CurrentMission.Interiors = new List<string>();
             CurrentMission.Vehicles = new List<SerializableVehicle>();
             CurrentMission.Actors = new List<SerializablePed>();
             CurrentMission.Objects = new List<SerializableObject>();
@@ -377,17 +384,8 @@ namespace MissionCreator.Editor
 
         private bool menuDirty;
 
-        public MissionData ReadMission(string path)
+        public static MissionData ReadMission(string path)
         {
-            path = basePath + "\\" + path;
-            if (!File.Exists(path) && File.Exists(path + ".xml"))
-                path += ".xml";
-            if (!File.Exists(path))
-            {
-                Game.DisplayNotification("File not found.");
-                return null;
-            }
-
             var serializer = new XmlSerializer(typeof(MissionData));
             MissionData tmpMiss = null;
             using (var stream = File.OpenRead(path))
@@ -395,33 +393,63 @@ namespace MissionCreator.Editor
             return tmpMiss;
         }
 
-        public void LoadMission(string path)
+        private void LoadInteriors(MissionData data)
         {
-            path = basePath + "\\" + path;
-            if (!File.Exists(path) && File.Exists(path + ".xml"))
-                path += ".xml";
-            if (!File.Exists(path))
+            foreach (string interior in data.Interiors)
             {
-                Game.DisplayNotification("File not found.");
-                return;
+                if (!StaticData.IPLData.Database.ContainsKey(interior)) continue;
+
+                if (StaticData.IPLData.Database[interior].Item1)
+                    Util.LoadOnlineMap();
+
+                foreach (string s in StaticData.IPLData.Database[interior].Item2)
+                {
+                    Util.LoadInterior(s);
+                }
+
+                foreach (string s in StaticData.IPLData.Database[interior].Item3)
+                {
+                    Util.RemoveInterior(s);
+                }
+            }
+        }
+
+        private void UnloadInteriors(MissionData data)
+        {
+            bool hasOnlineMap = false;
+            foreach (string interior in data.Interiors)
+            {
+                if (!StaticData.IPLData.Database.ContainsKey(interior)) continue;
+
+                if (!hasOnlineMap && StaticData.IPLData.Database[interior].Item1)
+                    hasOnlineMap = true;
+
+                foreach (string s in StaticData.IPLData.Database[interior].Item3)
+                {
+                    Util.LoadInterior(s);
+                }
+
+                foreach (string s in StaticData.IPLData.Database[interior].Item2)
+                {
+                    Util.RemoveInterior(s);
+                }
             }
 
-            ClearCurrentMission();
-            var serializer = new XmlSerializer(typeof(MissionData));
-            MissionData tmpMiss = null;
-            using (var stream = File.OpenRead(path))
-                tmpMiss = (MissionData)serializer.Deserialize(stream);
+            if (hasOnlineMap)
+                Util.RemoveOnlineMap();
+        }
 
-            tmpMiss.Objectives = new List<SerializableObjective>(tmpMiss.Objectives);
-            tmpMiss.Actors = new List<SerializablePed>(tmpMiss.Actors);
-            tmpMiss.Cutscenes = new List<SerializableCutscene>(tmpMiss.Cutscenes);
-            tmpMiss.Objects = new List<SerializableObject>(tmpMiss.Objects);
-            tmpMiss.Pickups = new List<SerializablePickup>(tmpMiss.Pickups);
-            tmpMiss.Spawnpoints = new List<SerializableSpawnpoint>(tmpMiss.Spawnpoints);
-            tmpMiss.Vehicles = new List<SerializableVehicle>(tmpMiss.Vehicles);
+        public void LoadMission(MissionData tmpMiss)
+        {
+
+            if(tmpMiss.Cutscenes == null)
+                tmpMiss.Cutscenes = new List<SerializableCutscene>();
+
 
             GameFiber.StartNew(delegate
             {
+                LoadInteriors(tmpMiss);
+
                 foreach (var vehicle in tmpMiss.Vehicles)
                 {
                     var newv = new Vehicle(Util.RequestModel(vehicle.ModelHash), vehicle.Position)
@@ -443,7 +471,7 @@ namespace MissionCreator.Editor
 
                 foreach (var ped in tmpMiss.Actors)
                 {
-                    ped.SetEntity(new Ped(Util.RequestModel(ped.ModelHash), ped.Position, ped.Rotation.Yaw)
+                    ped.SetEntity(new Ped(Util.RequestModel(ped.ModelHash), ped.Position - new Vector3(0,0,1), ped.Rotation.Yaw)
                     {
                         BlockPermanentEvents = true,
                     });
@@ -465,7 +493,7 @@ namespace MissionCreator.Editor
 
                 foreach (var spawnpoint in tmpMiss.Spawnpoints)
                 {
-                    spawnpoint.SetEntity(new Ped(spawnpoint.ModelHash, spawnpoint.Position, spawnpoint.Rotation.Yaw)
+                    spawnpoint.SetEntity(new Ped(spawnpoint.ModelHash, spawnpoint.Position - new Vector3(0,0,1), spawnpoint.Rotation.Yaw)
                     {
                         BlockPermanentEvents = true,
                     });
@@ -487,7 +515,7 @@ namespace MissionCreator.Editor
 
                 foreach (var ped in tmpMiss.Objectives.OfType<SerializableActorObjective>())
                 {
-                    ped.SetPed(new Ped(Util.RequestModel(ped.ModelHash), ped.Position, ped.Rotation.Yaw)
+                    ped.SetPed(new Ped(Util.RequestModel(ped.ModelHash), ped.Position - new Vector3(0,0,1), ped.Rotation.Yaw)
                     {
                         BlockPermanentEvents = true,
                     });
@@ -596,7 +624,7 @@ namespace MissionCreator.Editor
                 ped.Position = ped.GetObject().Position;
                 ped.Rotation = ped.GetObject().Rotation;
             }
-
+            
             if (!path.EndsWith(".xml"))
                 path += ".xml";
 
@@ -721,40 +749,42 @@ namespace MissionCreator.Editor
 
         public static EntityType GetEntityType(Entity ent)
         {
+            if (ent == null || !ent.IsValid()) return EntityType.None;
+
             if (ent.IsPed())
             {
-                if(CurrentMission.Actors.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                if(CurrentMission.Actors.Any(o => o?.GetEntity()?.Handle.Value == ent.Handle.Value))
                     return EntityType.NormalActor;
-                if(CurrentMission.Spawnpoints.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                if(CurrentMission.Spawnpoints.Any(o => o?.GetEntity()?.Handle.Value == ent.Handle.Value))
                     return EntityType.Spawnpoint;
                 if (CurrentMission.Objectives.Any(o =>
                 {
                     var act = o as SerializableActorObjective;
-                    return act?.GetPed().Handle.Value == ent.Handle.Value;
+                    return act?.GetPed()?.Handle.Value == ent.Handle.Value;
                 })) 
                     return EntityType.ObjectiveActor;
             }
             else if (ent.IsVehicle())
             {
-                if(CurrentMission.Vehicles.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                if(CurrentMission.Vehicles.Any(o => o?.GetEntity()?.Handle.Value == ent.Handle.Value))
                     return EntityType.NormalVehicle;
                 if (CurrentMission.Objectives.Any(o =>
                 {
                     var act = o as SerializableVehicleObjective;
-                    return act?.GetVehicle().Handle.Value == ent.Handle.Value;
+                    return act?.GetVehicle()?.Handle.Value == ent.Handle.Value;
                 }))
                     return EntityType.ObjectiveVehicle;
             }
             else if (ent.IsObject())
             {
-                if(CurrentMission.Objects.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                if(CurrentMission.Objects.Any(o => o?.GetEntity()?.Handle.Value == ent.Handle.Value))
                     return EntityType.NormalObject;
-                if(CurrentMission.Pickups.Any(o => o.GetEntity().Handle.Value == ent.Handle.Value))
+                if(CurrentMission.Pickups.Any(o => o?.GetEntity()?.Handle.Value == ent.Handle.Value))
                     return EntityType.NormalPickup;
                 if(CurrentMission.Objectives.Any(o =>
                 {
                     var d = o as SerializablePickupObjective;
-                    return d?.GetObject().Handle.Value == ent.Handle.Value;
+                    return d?.GetObject()?.Handle.Value == ent.Handle.Value;
                 }))
                     return EntityType.ObjectivePickup;
             }
@@ -1019,7 +1049,7 @@ namespace MissionCreator.Editor
 
         public SerializablePed CreatePed(Model model, Vector3 pos, float heading)
         {
-            var tmpPed = new Ped(model, pos, heading);
+            var tmpPed = new Ped(model, pos - new Vector3(0,0,1), heading);
             tmpPed.IsPositionFrozen = false;
             tmpPed.BlockPermanentEvents = true;
 
@@ -1046,7 +1076,7 @@ namespace MissionCreator.Editor
 
         public SerializableActorObjective CreatePedObjective(Model model, Vector3 pos, float heading)
         {
-            var tmpPed = new Ped(model, pos, heading);
+            var tmpPed = new Ped(model, pos - new Vector3(0,0,1), heading);
             tmpPed.IsPositionFrozen = false;
             tmpPed.BlockPermanentEvents = true;
 
@@ -1247,6 +1277,7 @@ namespace MissionCreator.Editor
             else
             {
                 CheckMenusForAlerts();
+                _cutsceneUi.Process();
                 _menuPool.ProcessMenus();
                 Children.ForEach(x => x.Process());
                 if (_propertiesMenu != null)
@@ -1256,7 +1287,6 @@ namespace MissionCreator.Editor
                     ((UIMenu)_propertiesMenu).ProcessMouse();
                     ((UIMenu)_propertiesMenu).Draw();
                 }
-                _cutsceneUi.Process();
             }
             if (IsInMainMenu)
             {
@@ -1302,6 +1332,7 @@ namespace MissionCreator.Editor
                         Color.FromArgb(obj.Alpha, (int)obj.Color.X, (int)obj.Color.Y, (int)obj.Color.Z));
                 }
             }
+
             foreach (var pickup in CurrentMission.Pickups)
             {
                 if(pickup.GetEntity() == null) continue;
@@ -1417,18 +1448,19 @@ namespace MissionCreator.Editor
                 }
                 MainCamera.Position += movementVector;
                 Game.LocalPlayer.Character.Position = MainCamera.Position;
+
                 var head = MainCamera.Rotation.Yaw;
                 if (head < 0f)
                     head += 360f;
                 Game.LocalPlayer.Character.Heading = head;
 
                 #endregion
-
+                
                 var ent = Util.RaycastEntity(new Vector2(0, 0),
                     MainCamera.Position,
                     new Vector3(MainCamera.Rotation.Pitch, MainCamera.Rotation.Roll, MainCamera.Rotation.Yaw)
                     , null);
-
+                
                 if (MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid())
                 {
                     CheckForProperty(ent);
@@ -1436,7 +1468,6 @@ namespace MissionCreator.Editor
                 }
                 else
                 {
-                    
                     CheckForIntersection(ent);
                     CheckForPickup(markerPos, ent == null);
                 }
@@ -1482,6 +1513,8 @@ namespace MissionCreator.Editor
                     }
                 }
             }
+
+            
 
             NativeFunction.CallByHash<uint>(0x231C8F89D0539D8F, BigMinimap, false);
             if(Util.IsGamepadEnabled)
@@ -1539,6 +1572,12 @@ namespace MissionCreator.Editor
                                                                 MarkerData.RepresentedBy.Rotation.Roll,
                                                                 MarkerData.RepresentedBy.Rotation.Yaw - 3f);
                 RingData.Heading -= 3f;
+            }
+
+            if (_cutsceneUi.IsInCutsceneEditor)
+            {
+                _cutsceneUi.Tick();
+                return;
             }
 
             if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() &&

@@ -9,6 +9,27 @@ namespace MissionCreator
     {
         public static bool IsGamepadEnabled => !NativeFunction.CallByHash<bool>(0xA571D46727E2B718, 0);
 
+        public static void LoadOnlineMap()
+        {
+            NativeFunction.CallByHash<uint>(0x0888C3502DBBEEF5);
+            NativeFunction.CallByHash<uint>(0x9BAE5AD2508DF078, 1);
+        }
+
+        public static void RemoveOnlineMap()
+        {
+            NativeFunction.CallByHash<uint>(0xD7C10C4A637992C9);
+        }
+
+        public static void LoadInterior(string interior)
+        {
+            NativeFunction.CallByName<uint>("REQUEST_IPL", interior);
+        }
+
+        public static void RemoveInterior(string interior)
+        {
+            NativeFunction.CallByName<uint>("REMOVE_IPL", interior);
+        }
+
         public static string GetControlButtonId(GameControl cont)
         {
             return (string)NativeFunction.CallByHash(0x0499D7B09FC9B407, typeof (string), 2, (int) cont, 0);
@@ -286,6 +307,26 @@ namespace MissionCreator
         {
             var change = endValue - startVal;
             return change*time/duration + startVal;
+        }
+
+        public static float QuadraticLerp(float time, float startVal, float endValue, float duration)
+        {
+            var change = endValue - startVal;
+
+            time /= duration/2;
+            if (time < 1) return change/2*time*time + startVal;
+            time--;
+            return -change/2*(time*(time - 2) - 1) + startVal;
+        }
+
+        public static Vector3 LerpVector(Vector3 vector, Vector3 end, Func<float, float, float, float, float> lerp, float time, float duration)
+        {
+            return new Vector3
+            {
+                X = lerp(time, vector.X, end.X, duration),
+                Y = lerp(time, vector.Y, end.Y, duration),
+                Z = lerp(time, vector.Z, end.Z, duration)
+            };
         }
     }
 }

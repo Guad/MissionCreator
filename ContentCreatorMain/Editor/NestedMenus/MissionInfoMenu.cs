@@ -277,6 +277,17 @@ namespace MissionCreator.Editor.NestedMenus
             }
             #endregion
 
+            #region Interiors
+            {
+                var item = new NativeMenuItem("Interiors");
+                var newMenu = new InteriorsMenu(data);
+                AddItem(item);
+                BindMenuToItem(newMenu, item);
+                Children.Add(newMenu);
+                
+            }
+            #endregion
+
             RefreshIndex();
         }
 

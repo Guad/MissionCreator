@@ -29,6 +29,8 @@ namespace MissionCreator.SerializableData
         public int Time { get; set; }
         public int? TimeLimit { get; set; }
 
+        public List<string> Interiors { get; set; } 
+
         public List<SerializableSpawnpoint> Spawnpoints { get; set; }
 
         public List<SerializablePed> Actors { get; set; } 

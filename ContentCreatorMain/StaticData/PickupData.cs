@@ -71,22 +71,9 @@ namespace MissionCreator.StaticData
                 new Tuple<string, int>("Money Bag", 341217064),
                 new Tuple<string, int>("Bullet Ammo", 1426343849),
                 new Tuple<string, int>("Missle Ammo", -107080240),
-                new Tuple<string, int>("Case", -562499202), 
+                new Tuple<string, int>("Money Case", -562499202),
+                new Tuple<string, int>("Package", 1852930709), 
             }},
         };
-
-        /*public static Dictionary<string, Tuple<string, uint, uint>[]> Database = new Dictionary<string, Tuple<string, uint, uint>[]>
-        {
-            {"Pistols", new []
-            {
-               new Tuple<string, uint, uint>("Pistol", 0x1B06D571, Convert.ToUInt32(-105925489)),
-               new Tuple<string, uint, uint>("AP Pistol ", 0x22D8FE39, Convert.ToUInt32(996550793)), 
-            }},
-            {"Rifles", new []
-            {
-                new Tuple<string, uint, uint>("Carbine Rifle", 0x83BF0278, Convert.ToUInt32(-546236071)), 
-                new Tuple<string, uint, uint>("Special Carbine", 0xC0A3098D, Convert.ToUInt32(-214137936)),
-            }},
-        };*/
     }
 }

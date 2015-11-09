@@ -108,8 +108,6 @@ namespace MissionCreator
             {
                 if(!MainEditor.IsInEditor && !MainEditor.IsInMainMenu)
                     MainEditor.EnterEditor();
-                else
-                    MainEditor.LeaveEditor();
             }
         }
     }

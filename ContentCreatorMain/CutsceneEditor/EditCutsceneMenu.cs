@@ -8,13 +8,12 @@ using RAGENativeUI.Elements;
 
 namespace MissionCreator.CutsceneEditor
 {
-    public class CreateCutsceneMenu : UIMenu, INestedMenu
+    public class EditCutsceneMenu : UIMenu, INestedMenu
     {
         public CutsceneUi GrandParent { get; set; }
         public List<UIMenu> Children { get; set; }
-        public SerializableCutscene CurrentCutscene { get; set; }
 
-        public CreateCutsceneMenu(CutsceneUi grandpa) : base("Cutscene Creator", "CREATE A CUTSCENE")
+        public EditCutsceneMenu(CutsceneUi grandpa) : base("Cutscene Creator", "EDIT CUTSCENE")
         {
             Children = new List<UIMenu>();
             MouseControlsEnabled = false;
@@ -23,18 +22,18 @@ namespace MissionCreator.CutsceneEditor
             SetKey(Common.MenuControls.Up, GameControl.CellphoneUp, 0);
             SetKey(Common.MenuControls.Down, GameControl.CellphoneDown, 0);
 
-            CurrentCutscene = new SerializableCutscene();
             GrandParent = grandpa;
-            Build();
         }
 
 
-        public void Build()
+        public void Build(SerializableCutscene cutscene)
         {
+            Clear();
+
             #region Name
             {
                 var item = new NativeMenuItem("Name");
-                item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                item.SetRightLabel(cutscene.Name);
                 AddItem(item);
                 item.Activated += (sender, selectedItem) =>
                 {
@@ -50,17 +49,17 @@ namespace MissionCreator.CutsceneEditor
                             item.SetRightLabel("");
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.Editor.DisableControlEnabling = false;
-                            CurrentCutscene.Name = null;
+                            cutscene.Name = null;
                             MenuItems[3].Enabled = false;
                             return;
                         }
                         Editor.Editor.DisableControlEnabling = false;
                         item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
-                        CurrentCutscene.Name = title;
+                        cutscene.Name = title;
                         selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
                         SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
 
-                        if (CurrentCutscene.Length > 0 && !string.IsNullOrEmpty(CurrentCutscene.Name))
+                        if (cutscene.Length > 0 && !string.IsNullOrEmpty(cutscene.Name))
                             MenuItems[3].Enabled = true;
                     });
                 };
@@ -70,12 +69,11 @@ namespace MissionCreator.CutsceneEditor
             #region Play at Objective
 
             {
-                CurrentCutscene.PlayAt = 0;
-                var item = new MenuListItem("Play at Objective", StaticData.StaticLists.ObjectiveIndexList, 0);
+                var item = new MenuListItem("Play at Objective", StaticData.StaticLists.ObjectiveIndexList, cutscene.PlayAt);
                 AddItem(item);
                 item.OnListChanged += (sender, index) =>
                 {
-                    CurrentCutscene.PlayAt = index;
+                    cutscene.PlayAt = index;
                 };
             }
             #endregion
@@ -83,7 +81,7 @@ namespace MissionCreator.CutsceneEditor
             #region Duration
             {
                 var item = new NativeMenuItem("Duration in Seconds");
-                item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                item.SetRightLabel(((int)(cutscene.Length/1000f)).ToString());
                 AddItem(item);
                 item.Activated += (sender, selectedItem) =>
                 {
@@ -98,8 +96,9 @@ namespace MissionCreator.CutsceneEditor
                             item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
                             item.SetRightLabel("");
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
-                            CurrentCutscene.Length = 0;
+                            cutscene.Length = 0;
                             Editor.Editor.DisableControlEnabling = false;
+                            MenuItems[3].Enabled = false;
                             return;
                         }
                         int len;
@@ -108,8 +107,9 @@ namespace MissionCreator.CutsceneEditor
                             item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
                             item.SetRightLabel("");
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
-                            CurrentCutscene.Length = 0;
+                            cutscene.Length = 0;
                             Editor.Editor.DisableControlEnabling = false;
+                            MenuItems[3].Enabled = false;
                             Game.DisplayNotification("Integer not in correct format.");
                             return;
                         }
@@ -119,7 +119,7 @@ namespace MissionCreator.CutsceneEditor
                             item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
                             item.SetRightLabel("");
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
-                            CurrentCutscene.Length = 0;
+                            cutscene.Length = 0;
                             Editor.Editor.DisableControlEnabling = false;
                             Game.DisplayNotification("Duration must be more than 0");
                             MenuItems[3].Enabled = false;
@@ -128,26 +128,27 @@ namespace MissionCreator.CutsceneEditor
 
                         Editor.Editor.DisableControlEnabling = false;
                         item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
-                        CurrentCutscene.Length = len*1000;
+                        cutscene.Length = len*1000;
                         selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
                         SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
-                        if (CurrentCutscene.Length > 0 && !string.IsNullOrEmpty(CurrentCutscene.Name))
+                        if (cutscene.Length > 0 && !string.IsNullOrEmpty(cutscene.Name))
                             MenuItems[3].Enabled = true;
                     });
                 };
             }
             #endregion
 
-            #region Continue
+            #region Edit
 
             {
                 var item = new NativeMenuItem("Continue");
                 AddItem(item);
-                item.Enabled = false;
+                if (cutscene.Length == 0 || string.IsNullOrEmpty(cutscene.Name))
+                    MenuItems[3].Enabled = false;
+
                 item.Activated += (sender, selectedItem) =>
                 {
-                    Editor.Editor.CurrentMission.Cutscenes.Add(CurrentCutscene);
-                    GrandParent.EnterCutsceneEditor(CurrentCutscene);
+                    GrandParent.EnterCutsceneEditor(cutscene);
                     Visible = false;
                 };
             }

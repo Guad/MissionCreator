@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using MissionCreator.SerializableData.Cutscenes;
 using Rage;
 
 namespace MissionCreator.StaticData
@@ -104,6 +105,8 @@ namespace MissionCreator.StaticData
             {"Night", 02},
             {"Sunrise", 07},
         };
+
+        public static List<dynamic> InterpolationList = new List<dynamic>(((InterpolationStyle[])Enum.GetValues(typeof(InterpolationStyle))).Select(n => (dynamic)n).ToList());
 
         public static List<dynamic> ObjectiveIndexList = new List<dynamic>(Enumerable.Range(0, 300).Select(n => (dynamic) n));
 

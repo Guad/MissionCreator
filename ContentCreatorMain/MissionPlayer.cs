@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using MissionCreator.SerializableData;
+using MissionCreator.SerializableData.Cutscenes;
 using MissionCreator.SerializableData.Objectives;
 using MissionCreator.UI;
 using Rage;
@@ -32,6 +33,59 @@ namespace MissionCreator
         private Model _oldModel;
         private Vector3 _oldPos;
 
+        private void LoadInteriors()
+        {
+            var wait = CurrentMission.Interiors.Any(x => StaticData.IPLData.Database[x].Item1);
+            
+            foreach (string interior in CurrentMission.Interiors)
+            {
+                if(!StaticData.IPLData.Database.ContainsKey(interior)) continue;
+
+                if(StaticData.IPLData.Database[interior].Item1)
+                    Util.LoadOnlineMap();
+
+                foreach (string s in StaticData.IPLData.Database[interior].Item2)
+                {
+                    Util.LoadInterior(s);
+                }
+
+                foreach (string s in StaticData.IPLData.Database[interior].Item3)
+                {
+                    Util.RemoveInterior(s);
+                }
+            }
+
+          if(wait)
+                GameFiber.Sleep(5000);
+        }
+
+        private void UnloadInteriors()
+        {
+            bool hasOnlineMap = false;
+            foreach (string interior in CurrentMission.Interiors)
+            {
+                if (!StaticData.IPLData.Database.ContainsKey(interior)) continue;
+
+                if (!hasOnlineMap && StaticData.IPLData.Database[interior].Item1)
+                    hasOnlineMap = true;
+
+                foreach (string s in StaticData.IPLData.Database[interior].Item3)
+                {
+                    Util.LoadInterior(s);
+                }
+
+                foreach (string s in StaticData.IPLData.Database[interior].Item2)
+                {
+                    Util.RemoveInterior(s);
+                }
+            }
+
+            if(hasOnlineMap)
+                Util.RemoveOnlineMap();
+        }
+
+
+
         public void Load(MissionData mission)
         {
             CurrentStage = -1;
@@ -52,6 +106,7 @@ namespace MissionCreator
             GameFiber.StartNew(delegate
             {
                 Game.FadeScreenOut(1000, true);
+                LoadInteriors();
 
                 World.Weather = CurrentMission.Weather;
                 World.TimeOfDay = new TimeSpan(CurrentMission.Time, 0, 0);
@@ -110,6 +165,9 @@ namespace MissionCreator
                     TimerBars?.Draw();
                     GameFiber.Yield();
                 }
+
+                UnloadInteriors();
+
             });
 
         }
@@ -163,9 +221,96 @@ namespace MissionCreator
             TimerBars = new TimerBars();
             CurrentStage++;
             CurrentObjectives.Clear();
-        if (CurrentMission.Cutscenes.Any(c => c.PlayAt == CurrentStage))
+
+            if (CurrentMission.Cutscenes.Any(c => c.PlayAt == CurrentStage))
             {
-                // TODO: Implement cutscenes.
+                var origPos = Game.LocalPlayer.Character.Position;
+                var origRot = Game.LocalPlayer.Character.Rotation;
+
+                Game.FadeScreenIn(100, true);
+
+                Game.LocalPlayer.Character.Opacity = 0f;
+                Game.LocalPlayer.Character.IsPositionFrozen = true;
+
+                var cutscene = CurrentMission.Cutscenes.First(c => c.PlayAt == CurrentStage);
+                var camLeft = new List<SerializableCamera>(cutscene.Cameras);
+                var subLeft = new List<SerializableSubtitle>(cutscene.Subtitles);
+
+                var startTime = Game.GameTime;
+                Camera mainCam = null;
+
+                SerializableCamera currentCam = null;
+                uint lerpStart = 0;
+                
+
+                while ((Game.GameTime - startTime) < cutscene.Length)
+                {
+                    var ct = (Game.GameTime - startTime);
+
+                    if (camLeft.Any())
+                    {
+                        if (camLeft[0].PositionInTime <= ct)
+                        {
+                            if (mainCam == null || !mainCam.IsValid())
+                            {
+                                Camera.DeleteAllCameras();
+                                mainCam = new Camera(true);
+                            }
+                            Game.LocalPlayer.HasControl = false;
+                            mainCam.Position = cutscene.Cameras[0].Position;
+                            mainCam.Rotation = cutscene.Cameras[0].Rotation;
+                            currentCam = camLeft[0];
+                            camLeft.RemoveAt(0);
+                            lerpStart = Game.GameTime;
+                            Game.LocalPlayer.Character.Position = mainCam.Position;
+                        }
+                        else if(currentCam != null)
+                        { // Advance cam pos
+                            if (currentCam.InterpolationStyle == InterpolationStyle.Linear)
+                            {
+                                mainCam.Position = Util.LerpVector(currentCam.Position, camLeft[0].Position,
+                                    Util.LinearLerp, Game.GameTime - lerpStart,
+                                    camLeft[0].PositionInTime - currentCam.PositionInTime);
+
+                                mainCam.Rotation = Util.LerpVector(currentCam.Rotation.ToVector(), camLeft[0].Rotation.ToVector(),
+                                    Util.LinearLerp, Game.GameTime - lerpStart,
+                                    camLeft[0].PositionInTime - currentCam.PositionInTime).ToRotator();
+                                Game.LocalPlayer.Character.Position = mainCam.Position;
+                            }
+                            else if (currentCam.InterpolationStyle == InterpolationStyle.Smooth)
+                            {
+                                mainCam.Position = Util.LerpVector(currentCam.Position, camLeft[0].Position,
+                                    Util.QuadraticLerp, Game.GameTime - lerpStart,
+                                    camLeft[0].PositionInTime - currentCam.PositionInTime);
+
+                                mainCam.Rotation = Util.LerpVector(currentCam.Rotation.ToVector(), camLeft[0].Rotation.ToVector(),
+                                    Util.QuadraticLerp, Game.GameTime - lerpStart,
+                                    camLeft[0].PositionInTime - currentCam.PositionInTime).ToRotator();
+                                Game.LocalPlayer.Character.Position = mainCam.Position;
+                            }
+                        }
+
+                        
+                    }
+
+                    if (subLeft.Any())
+                    {
+                        if (subLeft[0].PositionInTime <= ct)
+                        {
+                            Game.DisplaySubtitle(subLeft[0].Content, subLeft[0].DurationInMs);
+                            subLeft.RemoveAt(0);
+                        }
+                    }
+                    GameFiber.Yield();
+                }
+
+                mainCam.Active = false;
+                Game.LocalPlayer.HasControl = true;
+                Game.LocalPlayer.Character.IsPositionFrozen = false;
+                Game.LocalPlayer.Character.Position = origPos;
+                Game.LocalPlayer.Character.Rotation = origRot;
+                Game.LocalPlayer.Character.Opacity = 1f;
+                Game.FadeScreenOut(100);
             }
 
             foreach (var veh in CurrentMission.Vehicles.Where(v => v.SpawnAfter == CurrentStage))
@@ -222,7 +367,7 @@ namespace MissionCreator
                     if(veh.ObjectiveType == 0)
                     {
                         blip.Color = Color.DarkRed;
-                        while (!newv.IsDead)
+                        while (!newv.IsDead && IsMissionPlaying)
                         {
                             if (veh.ShowHealthBar)
                             {
@@ -325,20 +470,25 @@ namespace MissionCreator
                     if (actor.Behaviour == 3)
                         ped.Tasks.FightAgainstClosestHatedTarget(100f);
                     else if (actor.Behaviour == 2)
-                        NativeFunction.CallByName<uint>("TASK_GUARD_CURRENT_POSITION", ped.Handle.Value, 10, 10, 1);
+                        NativeFunction.CallByName<uint>("TASK_GUARD_CURRENT_POSITION", ped.Handle.Value, 15f, 10f, true);
                     else if (actor.Behaviour == 0)
                         ped.Tasks.Clear();
 
-                    while (IsMissionPlaying && (actor.RemoveAfter == 0 || actor.RemoveAfter > CurrentStage))
+                    while (IsMissionPlaying && (actor.RemoveAfter == 0 || actor.RemoveAfter > CurrentStage) && !ped.IsDead)
                     {
-                        if (actor.FailMissionOnDeath && ped.IsDead)
-                        {
-                            FailMission(reason: "An ally has died.");
-                        }
                         GameFiber.Yield();
                     }
-                    if(blip.IsValid())
+
+                    if (actor.FailMissionOnDeath && ped.IsDead)
+                    {
+                        FailMission(reason: "An ally has died.");
+                    }
+
+                    if (blip.IsValid())
                         blip.Delete();
+
+                    while(IsMissionPlaying && (actor.RemoveAfter == 0 || actor.RemoveAfter > CurrentStage))
+                        GameFiber.Yield();
 
                     if(ped.IsValid())
                         ped.Delete();
@@ -446,7 +596,7 @@ namespace MissionCreator
                     if (actor.Behaviour == 3)
                         ped.Tasks.FightAgainstClosestHatedTarget(100f);
                     else if (actor.Behaviour == 2)
-                        NativeFunction.CallByName<uint>("TASK_GUARD_CURRENT_POSITION", ped.Handle.Value, 10, 10, 1);
+                        NativeFunction.CallByName<uint>("TASK_GUARD_CURRENT_POSITION", ped.Handle.Value, 15f, 10f, true);
                     else if(actor.Behaviour == 0)
                         ped.Tasks.Clear();
 
@@ -529,6 +679,8 @@ namespace MissionCreator
             {
                 Game.DisplaySubtitle(CurrentMission.ObjectiveNames[CurrentStage], 10000);
             }
+
+            Game.FadeScreenIn(1);
         }
 
         public void Tick()

@@ -16,6 +16,6 @@ namespace MissionCreator.SerializableData.Cutscenes
         public Rotator Rotation { get; set; }
 
         public InterpolationStyle InterpolationStyle { get; set; }
-        public TimeSpan PositionInTime { get; set; }
+        public int PositionInTime { get; set; }
     }
 }

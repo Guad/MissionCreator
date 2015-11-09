@@ -52,9 +52,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CutsceneEditor\EditCutsceneMenu.cs" />
     <Compile Include="CutsceneEditor\CreateCutsceneMenu.cs" />
     <Compile Include="CutsceneEditor\CutsceneUi.cs" />
+    <Compile Include="CutsceneEditor\TimelineMarkers.cs" />
+    <Compile Include="CutsceneEditor\TimelineMarkerMenu.cs" />
     <Compile Include="Editor\Editor.cs" />
+    <Compile Include="Editor\NestedMenus\InteriorsMenu.cs" />
+    <Compile Include="Editor\NestedMenus\LoadMissionMenu.cs" />
     <Compile Include="Editor\NestedMenus\MarkerPropertiesMenu.cs" />
     <Compile Include="Editor\NestedMenus\PickupObjectivePropertiesMenu.cs" />
     <Compile Include="Editor\NestedMenus\VehicleObjectivePropertiesMenu.cs" />
@@ -90,6 +95,7 @@
     <Compile Include="SerializableData\Cutscenes\SerializableSubtitle.cs" />
     <Compile Include="SerializableData\SerializableVehicle.cs" />
     <Compile Include="StaticData\CheckpointData.cs" />
+    <Compile Include="StaticData\IPLData.cs" />
     <Compile Include="StaticData\RelationshipGroups.cs" />
     <Compile Include="StaticData\PickupData.cs" />
     <Compile Include="StaticData\WeaponsData.cs" />
@@ -104,7 +110,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /Y "$(TargetPath)" "A:\Program Files\Rockstar Games\Grand Theft Auto V\Plugins\$(TargetFileName)"</PostBuildEvent>
+    <PostBuildEvent>copy /Y "$(TargetPath)" "A:\Program Files\Rockstar Games\Grand Theft Auto V\Plugins\$(TargetFileName)"
+copy /Y "$(TargetDir)$(TargetName).pdb" "A:\Program Files\Rockstar Games\Grand Theft Auto V\Plugins\$(TargetName).pdb"</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

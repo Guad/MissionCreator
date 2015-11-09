@@ -17,7 +17,7 @@ namespace MissionCreator.Editor.NestedMenus
 
         public event EventHandler SelectionChanged;
 
-        public CategorySelectionMenu(Dictionary<string, string[]> items, string itemName, string caption = "PLACE ENTITY") : base("MissionCreator", caption)
+        public CategorySelectionMenu(Dictionary<string, string[]> items, string itemName, string caption = "PLACE ENTITY") : base("Mission Creator", caption)
         {
             MouseEdgeEnabled = false;
             MouseControlsEnabled = false;

@@ -100,6 +100,7 @@ namespace MissionCreator.StaticData
             new Tuple<string, uint>("Clown", 71929310),
             new Tuple<string, uint>("Mariachi", 2124742566),
             new Tuple<string, uint>("Paparazzi", 3972697109),
+            new Tuple<string, uint>("Zombie", 0xAC4B4506),
             }},
             {"Animals", new [] {
             new Tuple<string,uint>("Shepherd", 0x431FC24C), 

@@ -94,8 +94,10 @@
     <Compile Include="SerializableData\Objectives\SerializableTimer.cs" />
     <Compile Include="SerializableData\Cutscenes\SerializableSubtitle.cs" />
     <Compile Include="SerializableData\SerializableVehicle.cs" />
+    <Compile Include="SerializableData\Waypoints\SerializableWaypoint.cs" />
     <Compile Include="StaticData\CheckpointData.cs" />
     <Compile Include="StaticData\IPLData.cs" />
+    <Compile Include="StaticData\AnimData.cs" />
     <Compile Include="StaticData\RelationshipGroups.cs" />
     <Compile Include="StaticData\PickupData.cs" />
     <Compile Include="StaticData\WeaponsData.cs" />
@@ -107,6 +109,7 @@
     <Compile Include="UI\MissionPassedScreen.cs" />
     <Compile Include="UI\TimerBars.cs" />
     <Compile Include="Util.cs" />
+    <Compile Include="Waypoints\WaypointEditor.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

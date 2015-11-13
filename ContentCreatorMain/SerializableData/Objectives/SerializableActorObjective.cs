@@ -1,9 +1,13 @@
-﻿using Rage;
+﻿using System.Collections.Generic;
+using MissionCreator.SerializableData.Waypoints;
+using Rage;
 
 namespace MissionCreator.SerializableData.Objectives
 {
     public class SerializableActorObjective : SerializableObjective
     {
+        public List<SerializableWaypoint> Waypoints { get; set; }
+
         public uint ModelHash { get; set; }
         public uint WeaponHash { get; set; }
         public int WeaponAmmo { get; set; }

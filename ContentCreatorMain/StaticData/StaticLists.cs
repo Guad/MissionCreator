@@ -53,6 +53,16 @@ namespace MissionCreator.StaticData
             10000,
         };
 
+        public static List<Tuple<string, int>> DrivingStylesList = new List<Tuple<string, int>>
+        {
+            new Tuple<string, int>("Normal", 0xC00AB),
+            new Tuple<string, int>("Ignore Lights ", 0x2C0025),
+            new Tuple<string, int>("Sometimes Overtake Traffic", 5),
+            new Tuple<string, int>("Rushed", 0x400C0025),
+            new Tuple<string, int>("Avoid Traffic ", 0xC0024),
+            new Tuple<string, int>("Avoid Traffic Extremely", 6),
+        };
+
         public static List<dynamic> ObjectiveTypeList = new List<dynamic>
         {
             "Destroy Vehicle",

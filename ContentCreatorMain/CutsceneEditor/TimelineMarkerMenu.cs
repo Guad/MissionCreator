@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -37,6 +38,50 @@ namespace MissionCreator.CutsceneEditor
             GrandParent = grandpa;
         }
 
+        public void CameraShutterAnimation()
+        {
+            GameFiber.StartNew(delegate
+            {
+                var orig = UIMenu.GetScreenResolutionMantainRatio();
+                var res = new Size((int)orig.Width, (int)orig.Height);
+
+                var upperRect = new ResRectangle(new Point(0,0), new Size(res.Width, 0), Color.Black);
+                var lowerRect = new ResRectangle(new Point(0, res.Height), new Size(res.Width, 0), Color.Black);
+
+                var middle = res.Height/2;
+
+                var startTime = Game.GameTime;
+                const uint duration = 200;
+                while (Game.GameTime < startTime + duration)
+                {
+                    var lerp = (int)Util.LinearLerp(Game.GameTime - startTime, 0, middle, duration);
+
+                    upperRect.Size = new Size(res.Width, lerp);
+
+                    lowerRect.Position = new Point(0, res.Height - lerp);
+                    lowerRect.Size = new Size(res.Width, lerp);
+
+                    upperRect.Draw();
+                    lowerRect.Draw();
+                    GameFiber.Yield();
+                }
+
+                startTime = Game.GameTime;
+                while (Game.GameTime < startTime + duration)
+                {
+                    var lerp = (int)Util.LinearLerp(Game.GameTime - startTime, middle, 0, duration);
+                    upperRect.Size = new Size(res.Width, lerp);
+
+                    lowerRect.Position = new Point(0, res.Height - lerp);
+                    lowerRect.Size = new Size(res.Width, lerp);
+
+                    upperRect.Draw();
+                    lowerRect.Draw();
+                    GameFiber.Yield();
+                }
+            });
+        }
+
         public void BuildFor(TimeMarker marker)
         {
             Clear();
@@ -49,6 +94,8 @@ namespace MissionCreator.CutsceneEditor
                     AddItem(item);
                     item.Activated += (sender, selectedItem) =>
                     {
+                        CameraShutterAnimation();
+
                         var newM = new CameraMarker()
                         {
                             Time = GrandParent.CurrentTimestamp,
@@ -60,7 +107,7 @@ namespace MissionCreator.CutsceneEditor
                     };
                 }
                 {
-                    var item = new NativeMenuItem("Create new Subtitle");
+                    var item = new NativeMenuItem("Create new Subtitle Marker");
                     AddItem(item);
                     item.Activated += (sender, selectedItem) =>
                     {
@@ -73,6 +120,35 @@ namespace MissionCreator.CutsceneEditor
                         BuildFor(newM);
                     };
                 }
+                /*
+                {
+                    var item = new NativeMenuItem("Create new Actor Marker");
+                    AddItem(item);
+                    item.Activated += (sender, selectedItem) =>
+                    {
+                        var newM = new ActorMarker()
+                        {
+                            Time = GrandParent.CurrentTimestamp,
+                        };
+                        GrandParent.Markers.Add(newM);
+                        BuildFor(newM);
+                    };
+                }
+
+                {
+                    var item = new NativeMenuItem("Create new Vehicle Marker");
+                    AddItem(item);
+                    item.Activated += (sender, selectedItem) =>
+                    {
+                        var newM = new ActorMarker()
+                        {
+                            Time = GrandParent.CurrentTimestamp,
+                        };
+                        GrandParent.Markers.Add(newM);
+                        BuildFor(newM);
+                    };
+                }
+                */
                 #endregion
                 RefreshIndex();
                 return;

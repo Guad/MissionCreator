@@ -1,8 +1,9 @@
-﻿using Rage;
+﻿using System;
+using Rage;
 
 namespace MissionCreator.SerializableData
 {
-    public class SerializableObject : ISerializableEntity
+    public class SerializableObject : ISerializableEntity, ICloneable
     {
         public Vector3 Position { get; set; }
         public Rotator Rotation { get; set; }
@@ -20,6 +21,11 @@ namespace MissionCreator.SerializableData
         public virtual Entity GetEntity()
         {
             return _veh;
+        }
+
+        public object Clone()
+        {
+            return this.MemberwiseClone();
         }
     }
 }

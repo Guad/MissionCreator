@@ -9,6 +9,8 @@ using MissionCreator.Editor.NestedMenus;
 using MissionCreator.SerializableData;
 using MissionCreator.SerializableData.Cutscenes;
 using MissionCreator.SerializableData.Objectives;
+using MissionCreator.SerializableData.Waypoints;
+using MissionCreator.Waypoints;
 using Rage;
 using Rage.Native;
 using RAGENativeUI;
@@ -225,6 +227,7 @@ namespace MissionCreator.Editor
         public static int? ObjectiveMarkerId { get; set; }
         public static float CameraClampMax { get; set; }
         public static float CameraClampMin { get; set; }
+        public static WaypointEditor WaypointEditor { get; set; }
         #endregion
 
         #region Private Variables
@@ -664,6 +667,11 @@ namespace MissionCreator.Editor
                 Util.DrawMarker(ObjectiveMarkerId.Value, pos + new Vector3(0,0,MarkerData.HeightOffset), new Vector3(), new Vector3(1,1,1),
                         Color.FromArgb(100, Color.Yellow.R, Color.Yellow.G, Color.Yellow.B));
             }
+
+            if (_attachedMarker != null)
+            {
+                _attachedMarker.Position = pos;
+            }
         }
 
         public void RebuildMissionMenu(MissionData data)
@@ -791,6 +799,85 @@ namespace MissionCreator.Editor
             return EntityType.None;
         }
 
+        public static SerializableObject GetSerObjectFromEntity(Entity ent, Vector3 pos)
+        {
+            {
+                var threshold = 1.5f;
+                foreach (SerializablePickup pickup in CurrentMission.Pickups)
+                {
+                    if (pickup.GetEntity() == null || !pickup.GetEntity().IsValid()) continue;
+                    if ((pickup.GetEntity().Position - pos).Length() > threshold) continue;
+                    return pickup;
+                }
+            }
+
+            if (ent == null || !ent.IsValid()) return null;
+
+            var type = GetEntityType(ent);
+            switch (type)
+            {
+                case EntityType.NormalActor:
+                    return CurrentMission.Actors.First(o => o?.GetEntity()?.Handle.Value == ent.Handle.Value);
+                case EntityType.Spawnpoint:
+                    return CurrentMission.Spawnpoints.First(o => o?.GetEntity()?.Handle.Value == ent.Handle.Value);
+                case EntityType.NormalVehicle:
+                    return CurrentMission.Vehicles.First(o => o?.GetEntity()?.Handle.Value == ent.Handle.Value);
+                case EntityType.NormalObject:
+                    return CurrentMission.Objects.First(o => o?.GetEntity()?.Handle.Value == ent.Handle.Value);
+                case EntityType.NormalPickup:
+                    return CurrentMission.Pickups.First(o => o?.GetEntity()?.Handle.Value == ent.Handle.Value);
+            }
+            return null;
+        }
+
+        public static SerializableObjective GetSerObjectiveFromEntity(Entity ent, Vector3 pos)
+        {
+            {
+                var threshold = 1.5f;
+                foreach (SerializablePickupObjective objective in CurrentMission.Objectives.OfType<SerializablePickupObjective>())
+                {
+                    if (objective.GetObject() == null || !objective.GetObject().IsValid()) continue;
+                    if ((objective.GetObject().Position - pos).Length() > threshold) continue;
+                    return objective;
+                }
+
+                foreach (var mark in CurrentMission.Objectives.OfType<SerializableMarker>())
+                {
+                    if ((mark.Position - pos).Length() > threshold) continue;
+                    return mark;
+                }
+            }
+
+            if (ent == null || !ent.IsValid()) return null;
+
+            var type = GetEntityType(ent);
+            
+            switch (type)
+            {
+                case EntityType.ObjectiveActor:
+                    return CurrentMission.Objectives.First(o =>
+                    {
+                        var act = o as SerializableActorObjective;
+                        return act?.GetPed()?.Handle.Value == ent.Handle.Value;
+                    });
+                case EntityType.ObjectiveVehicle:
+                    return CurrentMission.Objectives.First(o =>
+                    {
+                        var act = o as SerializableVehicleObjective;
+                        return act?.GetVehicle()?.Handle.Value == ent.Handle.Value;
+                    });
+                case EntityType.ObjectivePickup:
+                    return CurrentMission.Objectives.First(o =>
+                    {
+                        var d = o as SerializablePickupObjective;
+                        return d?.GetObject()?.Handle.Value == ent.Handle.Value;
+                    });
+            }
+
+
+            return null;
+        }
+        
         private void CheckForIntersection(Entity ent)
         {
             if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() && ent != null && ent.IsValid())
@@ -983,6 +1070,7 @@ namespace MissionCreator.Editor
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.Aim);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.LookLeftRight);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.LookUpDown);
+            NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.LookBehind);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.CursorX);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.CursorY);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.CursorScrollUp);
@@ -1005,6 +1093,8 @@ namespace MissionCreator.Editor
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.FrontendRb);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.HUDSpecial);
             NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.Duck);
+            NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.CellphoneSelect);
+            NativeFunction.CallByName<uint>("ENABLE_CONTROL_ACTION", 0, (int)GameControl.CellphoneCancel);
         }
 
         private void EnableMenuControls()
@@ -1049,7 +1139,7 @@ namespace MissionCreator.Editor
 
         public SerializablePed CreatePed(Model model, Vector3 pos, float heading)
         {
-            var tmpPed = new Ped(model, pos - new Vector3(0,0,1), heading);
+            var tmpPed = new Ped(model, pos, heading);
             tmpPed.IsPositionFrozen = false;
             tmpPed.BlockPermanentEvents = true;
 
@@ -1070,13 +1160,31 @@ namespace MissionCreator.Editor
             tmpObj.Armor = 0;
             tmpObj.Accuracy = 50;
             tmpObj.SpawnInVehicle = false;
+            tmpObj.Waypoints = new List<SerializableWaypoint>();
+            CurrentMission.Actors.Add(tmpObj);
+            return tmpObj;
+        }
+
+        public SerializablePed CreatePed(SerializablePed orig)
+        {
+            var tmpPed = new Ped(orig.GetEntity().Model, orig.GetEntity().Position - new Vector3(0, 0, 1), orig.GetEntity().Rotation.Yaw);
+            tmpPed.IsPositionFrozen = false;
+            tmpPed.BlockPermanentEvents = true;
+
+            var blip = tmpPed.AttachBlip();
+            blip.Color = Color.Orange;
+            blip.Scale = 0.7f;
+            _blips.Add(blip);
+
+            var tmpObj = (SerializablePed) orig.Clone();
+            tmpObj.SetEntity(tmpPed);
             CurrentMission.Actors.Add(tmpObj);
             return tmpObj;
         }
 
         public SerializableActorObjective CreatePedObjective(Model model, Vector3 pos, float heading)
         {
-            var tmpPed = new Ped(model, pos - new Vector3(0,0,1), heading);
+            var tmpPed = new Ped(model, pos, heading);
             tmpPed.IsPositionFrozen = false;
             tmpPed.BlockPermanentEvents = true;
 
@@ -1097,6 +1205,24 @@ namespace MissionCreator.Editor
             tmpObj.Accuracy = 50;
             tmpObj.Armor = 0;
             tmpObj.SpawnInVehicle = false;
+            tmpObj.Waypoints = new List<SerializableWaypoint>();
+            CurrentMission.Objectives.Add(tmpObj);
+            return tmpObj;
+        }
+
+        public SerializableActorObjective CreatePedObjective(SerializableActorObjective orig)
+        {
+            var tmpPed = new Ped(orig.GetPed().Model, orig.GetPed().Position - new Vector3(0,0,1), orig.GetPed().Rotation.Yaw);
+            tmpPed.IsPositionFrozen = false;
+            tmpPed.BlockPermanentEvents = true;
+
+            var blip = tmpPed.AttachBlip();
+            blip.Color = Color.Red;
+            blip.Scale = 0.7f;
+            _blips.Add(blip);
+
+            var tmpObj = (SerializableActorObjective)orig.Clone();
+            tmpObj.SetPed(tmpPed);
             CurrentMission.Objectives.Add(tmpObj);
             return tmpObj;
         }
@@ -1124,6 +1250,26 @@ namespace MissionCreator.Editor
             return tmpObj;
         }
 
+        public SerializableVehicleObjective CreateVehicleObjective(SerializableVehicleObjective orig)
+        {
+            var tmpVeh = new Vehicle(orig.GetVehicle().Model, orig.GetVehicle().Position)
+            {
+                PrimaryColor = orig.GetVehicle().PrimaryColor,
+                SecondaryColor = orig.GetVehicle().SecondaryColor,
+            };
+            var blip = tmpVeh.AttachBlip();
+            blip.Color = Color.Red;
+            blip.Scale = 0.7f;
+            _blips.Add(blip);
+
+            tmpVeh.IsPositionFrozen = false;
+            tmpVeh.Rotation = orig.GetVehicle().Rotation;
+            var tmpObj = (SerializableVehicleObjective)orig.Clone();
+            tmpObj.SetVehicle(tmpVeh);
+            CurrentMission.Objectives.Add(tmpObj);
+            return tmpObj;
+        }
+
         public SerializableSpawnpoint CreateSpawnpoint(Model model, Vector3 pos, float heading)
         {
             var tmpPed = new Ped(model, pos, heading);
@@ -1143,6 +1289,22 @@ namespace MissionCreator.Editor
             tmpObj.Health = 200;
             tmpObj.Armor = 0;
             tmpObj.SpawnInVehicle = false;
+            CurrentMission.Spawnpoints.Add(tmpObj);
+            return tmpObj;
+        }
+
+        public SerializableSpawnpoint CreateSpawnpoint(SerializableSpawnpoint orig)
+        {
+            var tmpPed = new Ped(orig.GetEntity().Model, orig.GetEntity().Position, orig.GetEntity().Heading);
+            tmpPed.IsPositionFrozen = true;
+            tmpPed.BlockPermanentEvents = true;
+
+            var blip = tmpPed.AttachBlip();
+            blip.Color = Color.White;
+            _blips.Add(blip);
+
+            var tmpObj = (SerializableSpawnpoint)orig.Clone();
+            tmpObj.SetEntity(tmpPed);
             CurrentMission.Spawnpoints.Add(tmpObj);
             return tmpObj;
         }
@@ -1172,6 +1334,27 @@ namespace MissionCreator.Editor
             return tmpObj;
         }
 
+        public SerializableVehicle CreateVehicle(SerializableVehicle orig)
+        {
+            var tmpVeh = new Vehicle(orig.GetEntity().Model, orig.GetEntity().Position, orig.GetEntity().Heading)
+            {
+                PrimaryColor = ((Vehicle)orig.GetEntity()).PrimaryColor,
+                SecondaryColor = ((Vehicle)orig.GetEntity()).SecondaryColor,
+            };
+
+            var blip = tmpVeh.AttachBlip();
+            blip.Color = Color.Orange;
+            blip.Scale = 0.7f;
+            _blips.Add(blip);
+
+            tmpVeh.IsPositionFrozen = false;
+            tmpVeh.Rotation = orig.GetEntity().Rotation;
+            var tmpObj = (SerializableVehicle)orig.Clone();
+            tmpObj.SetEntity(tmpVeh);
+            CurrentMission.Vehicles.Add(tmpObj);
+            return tmpObj;
+        }
+
         public SerializableObject CreateObject(Model model, Vector3 pos, Rotator rot)
         {
             var tmpObject = new Object(model, pos);
@@ -1181,6 +1364,17 @@ namespace MissionCreator.Editor
             tmpObj.SetEntity(tmpObject);
             tmpObj.SpawnAfter = 0;
             tmpObj.RemoveAfter = 0;
+            CurrentMission.Objects.Add(tmpObj);
+            return tmpObj;
+        }
+
+        public SerializableObject CreateObject(SerializableObject orig)
+        {
+            var tmpObject = new Object(orig.GetEntity().Model, orig.GetEntity().Position);
+            tmpObject.Rotation = orig.GetEntity().Rotation;
+            tmpObject.Position = orig.GetEntity().Position;
+            var tmpObj = (SerializableObject)orig.Clone();
+            tmpObj.SetEntity(tmpObject);
             CurrentMission.Objects.Add(tmpObj);
             return tmpObj;
         }
@@ -1203,6 +1397,19 @@ namespace MissionCreator.Editor
             return tmpObj;
         }
 
+        public SerializablePickup CreatePickup(SerializablePickup orig)
+        {
+            var tmpObject = new Rage.Object(new Model("prop_mp_repair"), orig.GetEntity().Position);
+            tmpObject.Rotation = orig.GetEntity().Rotation;
+            tmpObject.Position = orig.GetEntity().Position;
+            tmpObject.IsPositionFrozen = true;
+
+            var tmpObj = (SerializablePickup)orig.Clone();
+            tmpObj.SetEntity(tmpObject);
+            CurrentMission.Pickups.Add(tmpObj);
+            return tmpObj;
+        }
+
         public SerializablePickupObjective CreatePickupObjective(int weaponHash, Vector3 pos, Rotator rot)
         {
             var tmpObject = new Rage.Object(new Model("prop_mp_repair"), pos);
@@ -1216,6 +1423,18 @@ namespace MissionCreator.Editor
             tmpObj.Respawn = false;
             tmpObj.Ammo = 9999;
             tmpObj.PickupHash = weaponHash;
+            CurrentMission.Objectives.Add(tmpObj);
+            return tmpObj;
+        }
+
+        public SerializablePickupObjective CreatePickupObjective(SerializablePickupObjective orig)
+        {
+            var tmpObject = new Rage.Object(new Model("prop_mp_repair"), orig.GetObject().Position);
+            tmpObject.Rotation = orig.GetObject().Rotation;
+            tmpObject.Position = orig.GetObject().Position;
+            tmpObject.IsPositionFrozen = true;
+            var tmpObj = (SerializablePickupObjective)orig.Clone();
+            tmpObj.SetObject(tmpObject);
             CurrentMission.Objectives.Add(tmpObj);
             return tmpObj;
         }
@@ -1234,7 +1453,13 @@ namespace MissionCreator.Editor
             return tmpObj;
         }
 
-        
+        public SerializableMarker CreateCheckpoint(SerializableMarker orig)
+        {
+            var tmpObj = (SerializableMarker)orig.Clone();
+            CurrentMission.Objectives.Add(tmpObj);
+            return tmpObj;
+        }
+
         private void DrawInstructionalButtonsScaleform()
         {
             _instructButts.Load("instructional_buttons");
@@ -1262,8 +1487,62 @@ namespace MissionCreator.Editor
             _instructButts.CallFunction("SET_DATA_SLOT", 5, Util.GetControlButtonId(GameControl.FrontendRb), "");
             _instructButts.CallFunction("SET_DATA_SLOT", 6, Util.GetControlButtonId(GameControl.FrontendLb), "Rotate");
 
+            _instructButts.CallFunction("SET_DATA_SLOT", 7, Util.GetControlButtonId(GameControl.LookBehind), "Copy");
+
 
             _instructButts.CallFunction("DRAW_INSTRUCTIONAL_BUTTONS", -1);
+        }
+
+        private bool _isCopying;
+        private SerializableMarker _attachedMarker;
+        private void CopyWatch(Entity ent, Vector3 marker)
+        {
+            if (!Game.IsControlJustPressed(0, GameControl.LookBehind)) return;
+            var objectTry = GetSerObjectFromEntity(ent, marker);
+            
+            if (objectTry != null)
+            {
+                SerializableObject output = null;
+                if (objectTry is SerializablePed)
+                    output = CreatePed((SerializablePed) objectTry);
+                else if (objectTry is SerializableVehicle)
+                    output = CreateVehicle((SerializableVehicle) objectTry);
+                else if (objectTry is SerializableSpawnpoint)
+                    output = CreateSpawnpoint((SerializableSpawnpoint) objectTry);
+                else if (objectTry is SerializablePickup)
+                    output = CreatePickup((SerializablePickup) objectTry);
+                else
+                    output = CreateObject(objectTry);
+
+                MarkerData.RepresentedBy = output?.GetEntity();
+                _isCopying = true;
+                return;
+            }
+
+            var objectiveTry = GetSerObjectiveFromEntity(ent, marker);
+            if (objectiveTry == null) return;
+
+            if (objectiveTry is SerializableActorObjective)
+            {
+                MarkerData.RepresentedBy = CreatePedObjective((SerializableActorObjective)objectiveTry).GetPed();
+                _isCopying = true;
+            }
+            else if (objectiveTry is SerializableVehicleObjective)
+            {
+                MarkerData.RepresentedBy = CreateVehicleObjective((SerializableVehicleObjective)objectiveTry).GetVehicle();
+                _isCopying = true;
+            }
+
+            else if (objectiveTry is SerializablePickupObjective)
+            {
+                MarkerData.RepresentedBy = CreatePickupObjective((SerializablePickupObjective) objectiveTry).GetObject();
+                _isCopying = true;
+            }
+
+            else if (objectiveTry is SerializableMarker)
+            {
+                _attachedMarker = CreateCheckpoint((SerializableMarker) objectiveTry);
+            }
         }
 
         public void Tick(GraphicsEventArgs canvas)
@@ -1280,6 +1559,7 @@ namespace MissionCreator.Editor
                 _cutsceneUi.Process();
                 _menuPool.ProcessMenus();
                 Children.ForEach(x => x.Process());
+
                 if (_propertiesMenu != null)
                 {
                     _propertiesMenu.Process();
@@ -1351,6 +1631,7 @@ namespace MissionCreator.Editor
                     NativeFunction.CallByName<uint>("DISABLE_ALL_CONTROL_ACTIONS", 0);
                     EnableControls();
                 }
+
                 if (EnableBasicMenuControls)
                 {
                     EnableMenuControls();
@@ -1402,8 +1683,7 @@ namespace MissionCreator.Editor
                     zoomOut = Game.IsControlPressed(0, GameControl.CursorScrollDown);
                 }
 
-
-
+                
                 MainCamera.Rotation = new Rotator((MainCamera.Rotation.Pitch + mouseY).Clamp(CameraClampMin, CameraClampMax), 0f,
                     MainCamera.Rotation.Yaw + mouseX); 
 
@@ -1460,21 +1740,25 @@ namespace MissionCreator.Editor
                     MainCamera.Position,
                     new Vector3(MainCamera.Rotation.Pitch, MainCamera.Rotation.Roll, MainCamera.Rotation.Yaw)
                     , null);
-                
-                if (MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid())
+
+                if (!_isCopying)
                 {
-                    CheckForProperty(ent);
-                    CheckForPickupProperty(markerPos, ent==null);
+                    if (MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid())
+                    {
+                        CheckForProperty(ent);
+                        CheckForPickupProperty(markerPos, ent == null);
+                    }
+                    else
+                    {
+                        CheckForIntersection(ent);
+                        CheckForPickup(markerPos, ent == null);
+                    }
                 }
-                else
-                {
-                    CheckForIntersection(ent);
-                    CheckForPickup(markerPos, ent == null);
-                }
-                
+                WaypointEditor?.Process(markerPos, ent);
+                CopyWatch(ent, markerPos);
                 DisplayMarker(markerPos, dir);
             }
-            else // bug: a lot of things dont work in on foot mode
+            else
             {
                 var gameplayCoord = NativeFunction.CallByName<Vector3>("GET_GAMEPLAY_CAM_COORD");
                 var gameplayRot = NativeFunction.CallByName<Vector3>("GET_GAMEPLAY_CAM_ROT", 2);
@@ -1497,12 +1781,23 @@ namespace MissionCreator.Editor
                     gameplayCoord,
                     gameplayRot, Game.LocalPlayer.Character);
 
-                if (MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid())
-                    CheckForIntersection(ent);
-                else
-                    CheckForProperty(ent);
-
+                if (!_isCopying)
+                {
+                    if (MarkerData.RepresentedBy == null || !MarkerData.RepresentedBy.IsValid())
+                    {
+                        CheckForProperty(ent);
+                        CheckForPickupProperty(markerPos, ent == null);
+                    }
+                    else
+                    {
+                        CheckForIntersection(ent);
+                        CheckForPickup(markerPos, ent == null);
+                    }
+                }
+                WaypointEditor?.Process(markerPos, ent);
+                CopyWatch(ent, markerPos);
                 DisplayMarker(markerPos, markerPos - NativeFunction.CallByName<Vector3>("GET_GAMEPLAY_CAM_COORD"));
+
 
                 if (!_menuPool.IsAnyMenuOpen())
                 {
@@ -1577,6 +1872,29 @@ namespace MissionCreator.Editor
             if (_cutsceneUi.IsInCutsceneEditor)
             {
                 _cutsceneUi.Tick();
+                return;
+            }
+
+            if (WaypointEditor != null && WaypointEditor.IsInEditor)
+                return;
+
+            if (_isCopying && MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
+            {
+                if (Game.IsControlJustPressed(0, GameControl.Attack))
+                {
+                    MarkerData.RepresentedBy = null;
+                    _isCopying = false;
+                }
+                return;
+            }
+
+            if (_isCopying && _attachedMarker != null)
+            {
+                if (Game.IsControlJustPressed(0, GameControl.Attack))
+                {
+                    _attachedMarker = null;
+                    _isCopying = false;
+                }
                 return;
             }
 

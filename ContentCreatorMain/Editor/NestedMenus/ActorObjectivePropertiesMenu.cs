@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using MissionCreator.Waypoints;
 using Rage;
 using Rage.Native;
 using RAGENativeUI;
@@ -216,10 +217,30 @@ namespace MissionCreator.Editor.NestedMenus
                 var wpyItem = new NativeMenuItem("Waypoints");
 
                 {
-                    // TODO: Waypoint menu
+                    var waypMenu = new WaypointEditor(actor);
+                    BindMenuToItem(waypMenu.CreateWaypointMenu, wpyItem);
+
+                    Vector3 camPos = new Vector3();
+                    Rotator camRot = new Rotator();
+
                     wpyItem.Activated += (sender, selectedItem) =>
                     {
-                        Game.DisplayNotification("Waypoints are not implemented yet.");
+                        camPos = Editor.MainCamera.Position;
+                        camRot = Editor.MainCamera.Rotation;
+
+                        waypMenu.Enter();
+                        Editor.WaypointEditor = waypMenu;
+                    };
+
+                    waypMenu.OnEditorExit += (sender, args) =>
+                    {
+                        Editor.WaypointEditor = null;
+                        Editor.DisableControlEnabling = true;
+                        if (camPos != new Vector3())
+                        {
+                            Editor.MainCamera.Position = camPos;
+                            Editor.MainCamera.Rotation = camRot;
+                        }
                     };
                 }
 
@@ -247,7 +268,7 @@ namespace MissionCreator.Editor.NestedMenus
                 item.CheckboxEvent += (sender, @checked) =>
                 {
                     actor.ShowHealthBar = @checked;
-                    MenuItems[11].Enabled = @checked;
+                    MenuItems[12].Enabled = @checked;
                 };
             }
             #endregion

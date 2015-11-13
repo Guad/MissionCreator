@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Xml.Serialization;
 using MissionCreator.SerializableData.Cutscenes;
 using MissionCreator.SerializableData.Objectives;
+using MissionCreator.SerializableData.Waypoints;
 using Rage;
 
 namespace MissionCreator.SerializableData
 {
     [XmlInclude(typeof(SerializableMarker))]
     [XmlInclude(typeof(SerializableCamera))]
+    [XmlInclude(typeof(SerializableWaypoint))]
     [XmlInclude(typeof(SerializableCutscene))]
     [XmlInclude(typeof(SerializableSubtitle))]
     [XmlInclude(typeof(SerializableObjective))]

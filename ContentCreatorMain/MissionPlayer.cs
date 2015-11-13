@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using MissionCreator.SerializableData;
 using MissionCreator.SerializableData.Cutscenes;
 using MissionCreator.SerializableData.Objectives;
+using MissionCreator.SerializableData.Waypoints;
 using MissionCreator.UI;
 using Rage;
 using Rage.Native;
@@ -83,8 +84,6 @@ namespace MissionCreator
             if(hasOnlineMap)
                 Util.RemoveOnlineMap();
         }
-
-
 
         public void Load(MissionData mission)
         {
@@ -183,6 +182,7 @@ namespace MissionCreator
                     Game.LocalPlayer.Character.Position = _oldPos - new Vector3(0, 0, 1);
             });
 
+            Game.DisplaySubtitle("", 100);
             IsMissionPlaying = false;
             Game.FadeScreenIn(1000);
         }
@@ -222,96 +222,6 @@ namespace MissionCreator
             CurrentStage++;
             CurrentObjectives.Clear();
 
-            if (CurrentMission.Cutscenes.Any(c => c.PlayAt == CurrentStage))
-            {
-                var origPos = Game.LocalPlayer.Character.Position;
-                var origRot = Game.LocalPlayer.Character.Rotation;
-
-                Game.FadeScreenIn(100, true);
-
-                Game.LocalPlayer.Character.Opacity = 0f;
-                Game.LocalPlayer.Character.IsPositionFrozen = true;
-
-                var cutscene = CurrentMission.Cutscenes.First(c => c.PlayAt == CurrentStage);
-                var camLeft = new List<SerializableCamera>(cutscene.Cameras);
-                var subLeft = new List<SerializableSubtitle>(cutscene.Subtitles);
-
-                var startTime = Game.GameTime;
-                Camera mainCam = null;
-
-                SerializableCamera currentCam = null;
-                uint lerpStart = 0;
-                
-
-                while ((Game.GameTime - startTime) < cutscene.Length)
-                {
-                    var ct = (Game.GameTime - startTime);
-
-                    if (camLeft.Any())
-                    {
-                        if (camLeft[0].PositionInTime <= ct)
-                        {
-                            if (mainCam == null || !mainCam.IsValid())
-                            {
-                                Camera.DeleteAllCameras();
-                                mainCam = new Camera(true);
-                            }
-                            Game.LocalPlayer.HasControl = false;
-                            mainCam.Position = cutscene.Cameras[0].Position;
-                            mainCam.Rotation = cutscene.Cameras[0].Rotation;
-                            currentCam = camLeft[0];
-                            camLeft.RemoveAt(0);
-                            lerpStart = Game.GameTime;
-                            Game.LocalPlayer.Character.Position = mainCam.Position;
-                        }
-                        else if(currentCam != null)
-                        { // Advance cam pos
-                            if (currentCam.InterpolationStyle == InterpolationStyle.Linear)
-                            {
-                                mainCam.Position = Util.LerpVector(currentCam.Position, camLeft[0].Position,
-                                    Util.LinearLerp, Game.GameTime - lerpStart,
-                                    camLeft[0].PositionInTime - currentCam.PositionInTime);
-
-                                mainCam.Rotation = Util.LerpVector(currentCam.Rotation.ToVector(), camLeft[0].Rotation.ToVector(),
-                                    Util.LinearLerp, Game.GameTime - lerpStart,
-                                    camLeft[0].PositionInTime - currentCam.PositionInTime).ToRotator();
-                                Game.LocalPlayer.Character.Position = mainCam.Position;
-                            }
-                            else if (currentCam.InterpolationStyle == InterpolationStyle.Smooth)
-                            {
-                                mainCam.Position = Util.LerpVector(currentCam.Position, camLeft[0].Position,
-                                    Util.QuadraticLerp, Game.GameTime - lerpStart,
-                                    camLeft[0].PositionInTime - currentCam.PositionInTime);
-
-                                mainCam.Rotation = Util.LerpVector(currentCam.Rotation.ToVector(), camLeft[0].Rotation.ToVector(),
-                                    Util.QuadraticLerp, Game.GameTime - lerpStart,
-                                    camLeft[0].PositionInTime - currentCam.PositionInTime).ToRotator();
-                                Game.LocalPlayer.Character.Position = mainCam.Position;
-                            }
-                        }
-
-                        
-                    }
-
-                    if (subLeft.Any())
-                    {
-                        if (subLeft[0].PositionInTime <= ct)
-                        {
-                            Game.DisplaySubtitle(subLeft[0].Content, subLeft[0].DurationInMs);
-                            subLeft.RemoveAt(0);
-                        }
-                    }
-                    GameFiber.Yield();
-                }
-
-                mainCam.Active = false;
-                Game.LocalPlayer.HasControl = true;
-                Game.LocalPlayer.Character.IsPositionFrozen = false;
-                Game.LocalPlayer.Character.Position = origPos;
-                Game.LocalPlayer.Character.Rotation = origRot;
-                Game.LocalPlayer.Character.Opacity = 1f;
-                Game.FadeScreenOut(100);
-            }
 
             foreach (var veh in CurrentMission.Vehicles.Where(v => v.SpawnAfter == CurrentStage))
             {
@@ -353,13 +263,25 @@ namespace MissionCreator
                 newv.Health = veh.Health;
                 newv.Rotation = veh.Rotation;
 
+                var hasActivated = false;
+
+                if (veh.ActivateAfter == CurrentStage)
+                {
+                    CurrentObjectives.Add(veh);
+                    hasActivated = true;
+                }
+
                 GameFiber.StartNew(delegate
                 {
-                    while (CurrentStage != veh.ActivateAfter && IsMissionPlaying)
+                    if(!hasActivated)
                     {
-                        GameFiber.Yield();
+                        while (CurrentStage != veh.ActivateAfter && IsMissionPlaying)
+                        {
+                            GameFiber.Yield();
+                        }
+                        CurrentObjectives.Add(veh);
                     }
-                    CurrentObjectives.Add(veh);
+
 
                     var blip = newv.AttachBlip();
                     
@@ -466,6 +388,7 @@ namespace MissionCreator
                     }
 
                     ped.BlockPermanentEvents = false;
+                    NativeFunction.CallByName<uint>("SET_PED_FIRING_PATTERN", ped.Handle.Value, 0xC6EE6B4C);
 
                     if (actor.Behaviour == 3)
                         ped.Tasks.FightAgainstClosestHatedTarget(100f);
@@ -473,6 +396,110 @@ namespace MissionCreator
                         NativeFunction.CallByName<uint>("TASK_GUARD_CURRENT_POSITION", ped.Handle.Value, 15f, 10f, true);
                     else if (actor.Behaviour == 0)
                         ped.Tasks.Clear();
+                    else if (actor.Behaviour == 4)
+                    {
+                        GameFiber.StartNew(delegate
+                        {
+                            var wpyList = new List<SerializableWaypoint>(actor.Waypoints);
+                            SerializableWaypoint currentWaypoint;
+                            if (wpyList.Count > 0)
+                                currentWaypoint = wpyList[0];
+
+                            while (ped.IsValid() && ped.Exists() && ped.IsAlive && IsMissionPlaying && wpyList.Count > 0)
+                            {
+                                if (wpyList.Count == 0) break;
+                                currentWaypoint = wpyList[0];
+                                Task pedTask = null;
+                                switch (currentWaypoint.Type)
+                                {
+                                    case WaypointTypes.Drive:
+                                        if (ped.IsInAnyVehicle(true))
+                                        {
+                                            pedTask = ped.Tasks.DriveToPosition(currentWaypoint.Position,
+                                                currentWaypoint.VehicleSpeed, (DriveToPositionFlags)currentWaypoint.DrivingStyle);
+                                        }
+                                        break;
+                                    case WaypointTypes.Run:
+                                        {
+                                            var heading = 0f;
+                                            if (wpyList.Count >= 2)
+                                            {
+                                                heading =
+                                                    Util.DirectionToRotation(wpyList[1].Position - currentWaypoint.Position)
+                                                        .Z;
+                                            }
+
+                                            pedTask = ped.Tasks.FollowNavigationMeshToPosition(currentWaypoint.Position,
+                                                heading, 2f, 0.3f, currentWaypoint.Duration == 0 ? -1 : (int)currentWaypoint.Duration);
+
+                                        }
+                                        break;
+                                    case WaypointTypes.Walk:
+                                        {
+                                            var heading = 0f;
+                                            if (wpyList.Count >= 2)
+                                            {
+                                                heading =
+                                                    Util.DirectionToRotation(wpyList[1].Position - currentWaypoint.Position)
+                                                        .Z;
+                                            }
+
+                                            pedTask = ped.Tasks.FollowNavigationMeshToPosition(currentWaypoint.Position,
+                                                heading, 1f, 0.3f, currentWaypoint.Duration == 0 ? -1 : (int)currentWaypoint.Duration);
+
+                                        }
+                                        break;
+                                    case WaypointTypes.ExitVehicle:
+                                        if (ped.IsInAnyVehicle(true))
+                                            pedTask = ped.Tasks.LeaveVehicle(LeaveVehicleFlags.None);
+                                        break;
+                                    case WaypointTypes.EnterVehicle:
+                                        Vehicle[] vehs = World.GetAllVehicles().Where(v =>
+                                        {
+                                            if (v != null && v.IsValid())
+                                                return v.Model.Hash == currentWaypoint.VehicleTargetModel;
+                                            return false;
+                                        }).OrderBy(v => (v.Position - ped.Position).Length()).ToArray();
+
+                                        if (vehs.Any())
+                                        {
+                                            if ((vehs[0].Position - ped.Position).Length() > 10f)
+                                            {
+                                                pedTask = ped.Tasks.FollowNavigationMeshToPosition(vehs[0].Position, 0f,
+                                                    3f,
+                                                    5f);
+                                                pedTask.WaitForCompletion(10000);
+                                            }
+                                            var seat = vehs[0].GetFreeSeatIndex();
+                                            if (seat.HasValue)
+                                                pedTask = ped.Tasks.EnterVehicle(vehs[0], seat.Value);
+                                        }
+                                        break;
+                                    case WaypointTypes.Wait:
+                                        pedTask = ped.Tasks.StandStill(currentWaypoint.Duration);
+                                        break;
+                                    case WaypointTypes.Wander:
+                                        pedTask = ped.Tasks.Wander();
+                                        break;
+                                    case WaypointTypes.Shoot:
+                                        pedTask = null;
+                                        NativeFunction.CallByName<uint>("TASK_SHOOT_AT_COORD", ped.Handle.Value,
+                                            currentWaypoint.Position.X, currentWaypoint.Position.Y,
+                                            currentWaypoint.Position.Z, currentWaypoint.Duration, 0xC6EE6B4C);
+                                        GameFiber.Sleep(currentWaypoint.Duration);
+                                        break;
+                                    case WaypointTypes.Animation:
+                                        pedTask = ped.Tasks.PlayAnimation(currentWaypoint.AnimDict,
+                                            currentWaypoint.AnimName, 8f, AnimationFlags.None);
+                                        break;
+                                }
+                                pedTask?.WaitForCompletion(currentWaypoint.Duration == 0 ? -1 : currentWaypoint.Duration);
+                                if (wpyList.Count > 0)
+                                    wpyList.RemoveAt(0);
+                                GameFiber.Yield();
+                            }
+                        });
+                    }
 
                     while (IsMissionPlaying && (actor.RemoveAfter == 0 || actor.RemoveAfter > CurrentStage) && !ped.IsDead)
                     {
@@ -558,6 +585,8 @@ namespace MissionCreator
                 if (actor.WeaponHash != 0)
                     ped.GiveNewWeapon(actor.WeaponHash, actor.WeaponAmmo, true);
 
+                NativeFunction.CallByName<uint>("SET_PED_FIRING_PATTERN", ped.Handle.Value, 0xC6EE6B4C);
+
                 ped.Health = actor.Health;
                 ped.MaxHealth = actor.Health;
                 ped.Armor = actor.Armor;
@@ -579,14 +608,27 @@ namespace MissionCreator
                     ped.WarpIntoVehicle(vehList.ToList()[0], actor.VehicleSeat);
                 }
 
+                var hasActivated = false;
+
+                if (actor.ActivateAfter == CurrentStage)
+                {
+                    CurrentObjectives.Add(actor);
+                    hasActivated = true;
+                }
+
                 GameFiber.StartNew(delegate
                 {
-                    while (CurrentStage != actor.ActivateAfter && IsMissionPlaying)
+                    
+                    if(!hasActivated)
                     {
-                        GameFiber.Yield();
+                        while (CurrentStage != actor.ActivateAfter && IsMissionPlaying)
+                        {
+                            GameFiber.Yield();
+                        }
+
+                        CurrentObjectives.Add(actor);
                     }
 
-                    CurrentObjectives.Add(actor);
                     var blip = ped.AttachBlip();
                     blip.Scale = 0.6f;
                     blip.Color = Color.DarkRed;
@@ -599,8 +641,111 @@ namespace MissionCreator
                         NativeFunction.CallByName<uint>("TASK_GUARD_CURRENT_POSITION", ped.Handle.Value, 15f, 10f, true);
                     else if(actor.Behaviour == 0)
                         ped.Tasks.Clear();
+                    else if (actor.Behaviour == 4)
+                    {
+                        GameFiber.StartNew(delegate
+                        {
+                            var wpyList = new List<SerializableWaypoint>(actor.Waypoints);
+                            SerializableWaypoint currentWaypoint;
+                            if(wpyList.Count > 0)
+                                currentWaypoint = wpyList[0];
 
-                
+                            while (ped.IsValid() && ped.Exists() && ped.IsAlive && IsMissionPlaying && wpyList.Count > 0)
+                            {
+                                if (wpyList.Count == 0) break;
+                                currentWaypoint = wpyList[0];
+                                Task pedTask = null;
+                                switch (currentWaypoint.Type)
+                                {
+                                    case WaypointTypes.Drive:
+                                        if (ped.IsInAnyVehicle(true))
+                                        {
+                                            pedTask = ped.Tasks.DriveToPosition(currentWaypoint.Position,
+                                                currentWaypoint.VehicleSpeed, (DriveToPositionFlags)currentWaypoint.DrivingStyle);
+                                        }
+                                        break;
+                                    case WaypointTypes.Run:
+                                        {
+                                            var heading = 0f;
+                                            if (wpyList.Count >= 2)
+                                            {
+                                                heading =
+                                                    Util.DirectionToRotation(wpyList[1].Position - currentWaypoint.Position)
+                                                        .Z;
+                                            }
+
+                                            pedTask = ped.Tasks.FollowNavigationMeshToPosition(currentWaypoint.Position,
+                                                heading, 2f, 0.3f, currentWaypoint.Duration == 0 ? -1 : (int)currentWaypoint.Duration);
+
+                                        }
+                                        break;
+                                    case WaypointTypes.Walk:
+                                        {
+                                            var heading = 0f;
+                                            if (wpyList.Count >= 2)
+                                            {
+                                                heading =
+                                                    Util.DirectionToRotation(wpyList[1].Position - currentWaypoint.Position)
+                                                        .Z;
+                                            }
+
+                                            pedTask = ped.Tasks.FollowNavigationMeshToPosition(currentWaypoint.Position,
+                                                heading, 1f, 0.3f, currentWaypoint.Duration == 0 ? -1 : (int)currentWaypoint.Duration);
+
+                                        }
+                                        break;
+                                    case WaypointTypes.ExitVehicle:
+                                        if (ped.IsInAnyVehicle(true))
+                                            pedTask = ped.Tasks.LeaveVehicle(LeaveVehicleFlags.None);
+                                        break;
+                                    case WaypointTypes.EnterVehicle:
+                                        Vehicle[] vehs = World.GetAllVehicles().Where(v =>
+                                        {
+                                            if (v != null && v.IsValid())
+                                                return v.Model.Hash == currentWaypoint.VehicleTargetModel;
+                                            return false;
+                                        }).OrderBy(v => (v.Position - ped.Position).Length()).ToArray();
+
+                                        if (vehs.Any())
+                                        {
+                                            if ((vehs[0].Position - ped.Position).Length() > 10f)
+                                            {
+                                                pedTask = ped.Tasks.FollowNavigationMeshToPosition(vehs[0].Position, 0f,
+                                                    3f,
+                                                    5f);
+                                                pedTask.WaitForCompletion(10000);
+                                            }
+                                            var seat = vehs[0].GetFreeSeatIndex();
+                                            if (seat.HasValue)
+                                                pedTask = ped.Tasks.EnterVehicle(vehs[0], seat.Value);
+                                        }
+                                        break;
+                                    case WaypointTypes.Wait:
+                                        pedTask = ped.Tasks.StandStill(currentWaypoint.Duration);
+                                        break;
+                                    case WaypointTypes.Wander:
+                                        pedTask = ped.Tasks.Wander();
+                                        break;
+                                    case WaypointTypes.Shoot:
+                                        pedTask = null;
+                                        NativeFunction.CallByName<uint>("TASK_SHOOT_AT_COORD", ped.Handle.Value,
+                                            currentWaypoint.Position.X, currentWaypoint.Position.Y,
+                                            currentWaypoint.Position.Z, currentWaypoint.Duration, 0xC6EE6B4C);
+                                        GameFiber.Sleep(currentWaypoint.Duration);
+                                        break;
+                                    case WaypointTypes.Animation:
+                                        pedTask = ped.Tasks.PlayAnimation(currentWaypoint.AnimDict,
+                                            currentWaypoint.AnimName, 8f, AnimationFlags.None);
+                                        break;
+                                }
+                                pedTask?.WaitForCompletion(currentWaypoint.Duration == 0 ? -1 : currentWaypoint.Duration);
+                                if(wpyList.Count > 0)
+                                    wpyList.RemoveAt(0);
+                                GameFiber.Yield();
+                            }
+                        });
+                    }
+
                     while (!ped.IsDead && IsMissionPlaying)
                     {
                         if (actor.ShowHealthBar)
@@ -637,6 +782,10 @@ namespace MissionCreator
                         pickup.Position.Y, pickup.Position.Z, pickup.Rotation.Pitch, pickup.Rotation.Roll, pickup.Rotation.Yaw,
                         1, pickup.Ammo, 2, 1, 0);
 
+                    var blip = new Blip(pickup.Position);
+                    blip.Scale = 0.7f;
+                    blip.Color = Color.DodgerBlue;
+
                     var counter = 0;
                     while ((pickup.Position - Game.LocalPlayer.Character.Position).Length() > 1f && IsMissionPlaying)
                     {
@@ -648,6 +797,9 @@ namespace MissionCreator
                         GameFiber.Yield();
                     }
 
+                    if(blip != null && blip.IsValid())
+                        blip.Delete();
+                    
                     NativeFunction.CallByName<uint>("REMOVE_PICKUP", obj);
                     CurrentObjectives.Remove(pickup);
                 });
@@ -674,6 +826,107 @@ namespace MissionCreator
                     CurrentObjectives.Remove(mark);
                 });
             }
+
+
+            if (CurrentMission.Cutscenes.Any(c => c.PlayAt == CurrentStage))
+            {
+                var origPos = Game.LocalPlayer.Character.Position;
+                var origRot = Game.LocalPlayer.Character.Rotation;
+
+                Game.FadeScreenIn(100, true);
+
+                Game.LocalPlayer.Character.Opacity = 0f;
+                Game.LocalPlayer.Character.IsPositionFrozen = true;
+
+                var cutscene = CurrentMission.Cutscenes.First(c => c.PlayAt == CurrentStage);
+                var camLeft = new List<SerializableCamera>(cutscene.Cameras);
+                var subLeft = new List<SerializableSubtitle>(cutscene.Subtitles);
+
+                var startTime = Game.GameTime;
+                Camera mainCam = null;
+
+                SerializableCamera currentCam = null;
+                uint lerpStart = 0;
+
+
+                while ((Game.GameTime - startTime) < cutscene.Length)
+                {
+                    var ct = (Game.GameTime - startTime);
+
+                    if (camLeft.Any())
+                    {
+                        if (camLeft[0].PositionInTime <= ct)
+                        {
+                            if (mainCam == null || !mainCam.IsValid())
+                            {
+                                Camera.DeleteAllCameras();
+                                mainCam = new Camera(true);
+                            }
+
+                            Game.LocalPlayer.HasControl = false;
+                            mainCam.Position = cutscene.Cameras[0].Position;
+                            mainCam.Rotation = cutscene.Cameras[0].Rotation;
+                            currentCam = camLeft[0];
+                            camLeft.RemoveAt(0);
+                            lerpStart = Game.GameTime;
+                            Game.LocalPlayer.Character.Position = mainCam.Position;
+                        }
+                        else if (currentCam != null)
+                        {
+                            // Advance cam pos
+                            if (currentCam.InterpolationStyle == InterpolationStyle.Linear)
+                            {
+                                mainCam.Position = Util.LerpVector(currentCam.Position, camLeft[0].Position,
+                                    Util.LinearLerp, Game.GameTime - lerpStart,
+                                    camLeft[0].PositionInTime - currentCam.PositionInTime);
+
+                                mainCam.Rotation =
+                                    Util.LerpVector(currentCam.Rotation.ToVector(), camLeft[0].Rotation.ToVector(),
+                                        Util.LinearLerp, Game.GameTime - lerpStart,
+                                        camLeft[0].PositionInTime - currentCam.PositionInTime).ToRotator();
+                                Game.LocalPlayer.Character.Position = mainCam.Position;
+                            }
+                            else if (currentCam.InterpolationStyle == InterpolationStyle.Smooth)
+                            {
+                                mainCam.Position = Util.LerpVector(currentCam.Position, camLeft[0].Position,
+                                    Util.QuadraticLerp, Game.GameTime - lerpStart,
+                                    camLeft[0].PositionInTime - currentCam.PositionInTime);
+
+                                mainCam.Rotation =
+                                    Util.LerpVector(currentCam.Rotation.ToVector(), camLeft[0].Rotation.ToVector(),
+                                        Util.QuadraticLerp, Game.GameTime - lerpStart,
+                                        camLeft[0].PositionInTime - currentCam.PositionInTime).ToRotator();
+                                Game.LocalPlayer.Character.Position = mainCam.Position;
+                            }
+                        }
+                    }
+                    else if(currentCam != null && mainCam != null)
+                    {
+                        mainCam.Position = currentCam.Position;
+                        mainCam.Rotation = currentCam.Rotation;
+                        Game.LocalPlayer.Character.Position = mainCam.Position;
+                    }
+
+                    if (subLeft.Any())
+                    {
+                        if (subLeft[0].PositionInTime <= ct)
+                        {
+                            Game.DisplaySubtitle(subLeft[0].Content, subLeft[0].DurationInMs);
+                            subLeft.RemoveAt(0);
+                        }
+                    }
+                    GameFiber.Yield();
+                }
+
+                mainCam.Active = false;
+                Game.LocalPlayer.HasControl = true;
+                Game.LocalPlayer.Character.IsPositionFrozen = false;
+                Game.LocalPlayer.Character.Position = origPos;
+                Game.LocalPlayer.Character.Rotation = origRot;
+                Game.LocalPlayer.Character.Opacity = 1f;
+                Game.FadeScreenOut(100);
+            }
+
 
             if (!string.IsNullOrEmpty(CurrentMission.ObjectiveNames[CurrentStage]))
             {

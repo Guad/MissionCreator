@@ -484,7 +484,7 @@ namespace MissionCreator
                                     case WaypointTypes.CruiseWithVehicle:
                                         if (ped.IsInAnyVehicle(false))
                                             pedTask = ped.Tasks.CruiseWithVehicle(ped.CurrentVehicle,
-                                                currentWaypoint.VehicleSpeed, (DriveToPositionFlags)currentWaypoint.DrivingStyle);
+                                                currentWaypoint.VehicleSpeed, (VehicleDrivingFlags)currentWaypoint.DrivingStyle);
 
                                         
                                         break;
@@ -689,7 +689,7 @@ namespace MissionCreator
                                     case WaypointTypes.CruiseWithVehicle:
                                         if (ped.IsInAnyVehicle(true))
                                             pedTask = ped.Tasks.CruiseWithVehicle(ped.CurrentVehicle,
-                                                currentWaypoint.VehicleSpeed, (DriveToPositionFlags)currentWaypoint.DrivingStyle);
+                                                currentWaypoint.VehicleSpeed, (VehicleDrivingFlags)currentWaypoint.DrivingStyle);
                                         break;
                                     case WaypointTypes.Walk:
                                         {

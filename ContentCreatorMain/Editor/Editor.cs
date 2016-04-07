@@ -644,13 +644,13 @@ namespace MissionCreator.Editor
         {
             if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid())
             {
-                MarkerData.RepresentedBy.Position = pos + new Vector3(0f, 0f, MarkerData.RepresentationHeightOffset);
+                MarkerData.RepresentedBy.SetPositionWithSnap(pos + new Vector3(0f, 0f, MarkerData.RepresentationHeightOffset));
             }
             
 
             if (_mainObject != null && _mainObject.IsValid() && MarkerData.Display)
             {
-                _mainObject.Position = pos + new Vector3(0f, 0f, 0.1f + MarkerData.HeightOffset);
+                _mainObject.SetPositionWithSnap(pos + new Vector3(0f, 0f, 0.1f + MarkerData.HeightOffset));
                 _mainObject.Rotation = new Rotator(0f, 0f, MarkerData.HeadingOffset + Util.DirectionToRotation(directionalVector).Z);
             }
 
@@ -716,7 +716,7 @@ namespace MissionCreator.Editor
                     GameFiber.StartNew(delegate
                     {
                         DisableControlEnabling = true;
-                        string path = Util.GetUserInput();
+                        string path = Util.GetUserInput(_missionMenu);
                         if (string.IsNullOrEmpty(path))
                         {
                             DisableControlEnabling = false;

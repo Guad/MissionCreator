@@ -12,7 +12,7 @@ namespace MissionCreator.Editor.NestedMenus
 {
     public class MissionInfoMenu : UIMenu, INestedMenu
     {
-        public MissionInfoMenu(MissionData data) : base("MissionCreator", "MISSION DETAILS")
+        public MissionInfoMenu(MissionData data) : base("Mission Creator", "MISSION DETAILS")
         {
             MouseEdgeEnabled = false;
             MouseControlsEnabled = false;
@@ -44,7 +44,7 @@ namespace MissionCreator.Editor.NestedMenus
                     {
                         ResetKey(Common.MenuControls.Back);
                         Editor.DisableControlEnabling = true;
-                        string title = Util.GetUserInput();
+                        string title = Util.GetUserInput(this);
                         if (string.IsNullOrEmpty(title))
                         {
                             item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
@@ -78,7 +78,7 @@ namespace MissionCreator.Editor.NestedMenus
                     {
                         ResetKey(Common.MenuControls.Back);
                         Editor.DisableControlEnabling = true;
-                        string title = Util.GetUserInput();
+                        string title = Util.GetUserInput(this);
                         if (string.IsNullOrEmpty(title))
                         {
                             item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
@@ -125,7 +125,7 @@ namespace MissionCreator.Editor.NestedMenus
                     {
                         ResetKey(Common.MenuControls.Back);
                         Editor.DisableControlEnabling = true;
-                        string title = Util.GetUserInput();
+                        string title = Util.GetUserInput(this);
                         if (string.IsNullOrEmpty(title))
                         {
                             item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
@@ -196,7 +196,7 @@ namespace MissionCreator.Editor.NestedMenus
                     {
                         ResetKey(Common.MenuControls.Back);
                         Editor.DisableControlEnabling = true;
-                        string title = Util.GetUserInput();
+                        string title = Util.GetUserInput(this);
                         if (string.IsNullOrEmpty(title))
                         {
                             inputItem.SetRightBadge(UIMenuItem.BadgeStyle.Alert);

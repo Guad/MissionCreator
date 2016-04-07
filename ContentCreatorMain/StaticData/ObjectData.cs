@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace MissionCreator.StaticData
 {
@@ -18,5 +19,27 @@ namespace MissionCreator.StaticData
                 new Tuple<string, uint>("Barrel", 0xAFDD8CBB),
             }},
         };
+    }
+
+    public class CTuple<T1, T2>
+    {
+        public CTuple()
+        {
+            
+        }
+
+        public CTuple(T1 first, T2 sec)
+        {
+            Item1 = first;
+            Item2 = sec;
+        }
+
+        public T1 Item1;
+        public T2 Item2;
+    }
+
+    public class ObjectInfo
+    {
+        Dictionary<string, CTuple<string, uint>[]> MainInfo { get; set; }
     }
 }

@@ -89,7 +89,7 @@ namespace MissionCreator.Editor.NestedMenus
                     {
                         ResetKey(Common.MenuControls.Back);
                         Editor.DisableControlEnabling = true;
-                        string title = Util.GetUserInput();
+                        string title = Util.GetUserInput(this);
                         if (string.IsNullOrEmpty(title))
                         {
                             item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
@@ -256,7 +256,7 @@ namespace MissionCreator.Editor.NestedMenus
                     {
                         ResetKey(Common.MenuControls.Back);
                         Editor.DisableControlEnabling = true;
-                        string title = Util.GetUserInput();
+                        string title = Util.GetUserInput(this);
                         if (string.IsNullOrEmpty(title))
                         {
                             actor.Name = "HEALTH";

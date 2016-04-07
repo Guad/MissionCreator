@@ -125,7 +125,7 @@ namespace MissionCreator.Waypoints
                     {
                         _waypointPropertiesMenu.ResetKey(Common.MenuControls.Back);
                         Editor.Editor.DisableControlEnabling = true;
-                        string title = Util.GetUserInput();
+                        string title = Util.GetUserInput(_waypointPropertiesMenu);
 
                         Editor.Editor.DisableControlEnabling = false;
                         _waypointPropertiesMenu.SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
@@ -198,7 +198,7 @@ namespace MissionCreator.Waypoints
                         {
                             _waypointPropertiesMenu.ResetKey(Common.MenuControls.Back);
                             Editor.Editor.DisableControlEnabling = true;
-                            string title = Util.GetUserInput();
+                            string title = Util.GetUserInput(_waypointPropertiesMenu);
 
                             Editor.Editor.DisableControlEnabling = false;
                             _waypointPropertiesMenu.SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);

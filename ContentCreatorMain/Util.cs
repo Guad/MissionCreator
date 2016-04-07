@@ -2,6 +2,7 @@
 using Rage;
 using Rage.Native;
 using System.Drawing;
+using RAGENativeUI;
 
 namespace MissionCreator
 {
@@ -89,19 +90,24 @@ namespace MissionCreator
         {
             return NativeFunction.CallByName<bool>("IS_ENTITY_AN_OBJECT", ent.Handle.Value);
         }
+        
 
-        public static string GetUserInput()
+        public static string GetUserInput(UIMenu father)
         {
+            father.ResetKey(Common.MenuControls.Select);
             NativeFunction.CallByName<uint>("DISPLAY_ONSCREEN_KEYBOARD", true, "FMMC_KEY_TIP8", "", "", "", "", "", 255);
             int result = 0;
-            while ((result = NativeFunction.CallByName<int>("UPDATE_ONSCREEN_KEYBOARD")) == 0)
+            while (result == 0)
             {
                 NativeFunction.CallByName<uint>("DISABLE_ALL_CONTROL_ACTIONS", 0);
+                result = NativeFunction.CallByHash<int>(0x0CF2B696BBF945AE);
+                Game.DisplaySubtitle("Spin", 50);
                 GameFiber.Yield();
             }
+            father.SetKey(Common.MenuControls.Select, GameControl.FrontendAccept);
             if (result == 2)
                 return null;
-            return (string)NativeFunction.CallByName("GET_ONSCREEN_KEYBOARD_RESULT", typeof(string));
+            return (string) NativeFunction.CallByName("GET_ONSCREEN_KEYBOARD_RESULT", typeof (string));
         }
 
         public static bool IsDisabledControlPressed(GameControl control)

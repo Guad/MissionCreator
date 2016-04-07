@@ -100,6 +100,8 @@ namespace MissionCreator
             }*/
         }
 
+        private static GameFiber lel;
+        private static bool debug;
         public static void FrameRender(object sender, GraphicsEventArgs e)
         {
             MissionPlayer.Tick();

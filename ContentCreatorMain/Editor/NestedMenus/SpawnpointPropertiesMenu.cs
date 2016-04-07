@@ -30,7 +30,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region SpawnAfter
             {
-                var item = new MenuListItem("Spawn Before Objective", StaticData.StaticLists.NumberMenu, actor.SpawnAfter);
+                var item = new UIMenuListItem("Spawn Before Objective", StaticData.StaticLists.NumberMenu, actor.SpawnAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -44,7 +44,7 @@ namespace MissionCreator.Editor.NestedMenus
             #region Weapons
             {
                 
-                var item = new NativeMenuItem("Weapon");
+                var item = new UIMenuItem("Weapon");
                 var dict = StaticData.WeaponsData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Weapon", true, "SELECT WEAPON");
                 menu.Build("Melee");
@@ -59,7 +59,7 @@ namespace MissionCreator.Editor.NestedMenus
                         var hash = StaticData.WeaponsData.Database[menu.CurrentSelectedCategory].First(
                                 tuple => tuple.Item1 == menu.CurrentSelectedItem).Item2;
                         NativeFunction.CallByName<uint>("REMOVE_ALL_PED_WEAPONS", actor.GetEntity().Handle.Value, true);
-                        ((Ped) actor.GetEntity()).GiveNewWeapon(hash, actor.WeaponAmmo == 0 ? 9999 : actor.WeaponAmmo, true);
+                        ((Ped) actor.GetEntity()).Inventory.GiveNewWeapon(hash, (short)(actor.WeaponAmmo == 0 ? 9999 : actor.WeaponAmmo), true);
                         actor.WeaponHash = hash;
                     });
                 };
@@ -69,15 +69,15 @@ namespace MissionCreator.Editor.NestedMenus
                 var listIndex = actor.WeaponAmmo == 0
                     ? StaticData.StaticLists.AmmoChoses.FindIndex(n => n == (dynamic) 9999)
                     : StaticData.StaticLists.AmmoChoses.FindIndex(n => n == (dynamic) actor.WeaponAmmo);
-                var item = new MenuListItem("Ammo Count", StaticData.StaticLists.AmmoChoses, listIndex);
+                var item = new UIMenuListItem("Ammo Count", StaticData.StaticLists.AmmoChoses, listIndex);
 
                 item.OnListChanged += (sender, index) =>
                 {
-                    int newAmmo = int.Parse(((MenuListItem) sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
+                    int newAmmo = int.Parse(((UIMenuListItem) sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
                     actor.WeaponAmmo = newAmmo;
                     if(actor.WeaponHash == 0) return;
                     NativeFunction.CallByName<uint>("REMOVE_ALL_PED_WEAPONS", actor.GetEntity().Handle.Value, true);
-                    ((Ped)actor.GetEntity()).GiveNewWeapon(actor.WeaponHash, newAmmo, true);
+                    ((Ped)actor.GetEntity()).Inventory.GiveNewWeapon(actor.WeaponHash, (short)newAmmo, true);
                 };
 
                 AddItem(item);
@@ -89,11 +89,11 @@ namespace MissionCreator.Editor.NestedMenus
                 var listIndex = actor.Health == 0
                     ? StaticData.StaticLists.HealthArmorChoses.FindIndex(n => n == (dynamic)200)
                     : StaticData.StaticLists.HealthArmorChoses.FindIndex(n => n == (dynamic)actor.Health);
-                var item = new MenuListItem("Health", StaticData.StaticLists.HealthArmorChoses, listIndex);
+                var item = new UIMenuListItem("Health", StaticData.StaticLists.HealthArmorChoses, listIndex);
 
                 item.OnListChanged += (sender, index) =>
                 {
-                    int newAmmo = int.Parse(((MenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
+                    int newAmmo = int.Parse(((UIMenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
                     actor.Health = newAmmo;
                 };
 
@@ -104,11 +104,11 @@ namespace MissionCreator.Editor.NestedMenus
             #region Armor
             {
                 var listIndex = StaticData.StaticLists.HealthArmorChoses.FindIndex(n => n == (dynamic)actor.Armor);
-                var item = new MenuListItem("Armor", StaticData.StaticLists.HealthArmorChoses, listIndex);
+                var item = new UIMenuListItem("Armor", StaticData.StaticLists.HealthArmorChoses, listIndex);
 
                 item.OnListChanged += (sender, index) =>
                 {
-                    int newAmmo = int.Parse(((MenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
+                    int newAmmo = int.Parse(((UIMenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
                     actor.Armor = newAmmo;
                 };
 

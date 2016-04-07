@@ -30,7 +30,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region SpawnAfter
             {
-                var item = new MenuListItem("Spawn After Objective", StaticData.StaticLists.NumberMenu, obj.SpawnAfter);
+                var item = new UIMenuListItem("Spawn After Objective", StaticData.StaticLists.NumberMenu, obj.SpawnAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -43,7 +43,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region RemoveAfter
             {
-                var item = new MenuListItem("Remove After Objective", StaticData.StaticLists.RemoveAfterList, obj.RemoveAfter);
+                var item = new UIMenuListItem("Remove After Objective", StaticData.StaticLists.RemoveAfterList, obj.RemoveAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {

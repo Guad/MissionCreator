@@ -30,7 +30,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region SpawnAfter
             {
-                var item = new MenuListItem("Spawn Before Objective", StaticData.StaticLists.NumberMenu, actor.SpawnAfter);
+                var item = new UIMenuListItem("Spawn Before Objective", StaticData.StaticLists.NumberMenu, actor.SpawnAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -46,11 +46,11 @@ namespace MissionCreator.Editor.NestedMenus
                 var listIndex = actor.Ammo == 0
                     ? StaticData.StaticLists.AmmoChoses.FindIndex(n => n == (dynamic) 9999)
                     : StaticData.StaticLists.AmmoChoses.FindIndex(n => n == (dynamic) actor.Ammo);
-                var item = new MenuListItem("Ammo Count", StaticData.StaticLists.AmmoChoses, listIndex);
+                var item = new UIMenuListItem("Ammo Count", StaticData.StaticLists.AmmoChoses, listIndex);
 
                 item.OnListChanged += (sender, index) =>
                 {
-                    int newAmmo = int.Parse(((MenuListItem) sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
+                    int newAmmo = int.Parse(((UIMenuListItem) sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
                     actor.Ammo = newAmmo;
                 };
 
@@ -60,7 +60,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Respawn
             {
-                var item = new MenuCheckboxItem("Respawn", actor.Respawn);
+                var item = new UIMenuCheckboxItem("Respawn", actor.Respawn);
                 item.CheckboxEvent += (sender, @checked) =>
                 {
                     actor.Respawn = @checked;

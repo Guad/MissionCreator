@@ -37,7 +37,7 @@ namespace MissionCreator.Editor
             _menuPool.Add(_mainMenu);
 
             {
-                var menuItem = new NativeMenuItem("Create a Mission", "Create a new mission.");
+                var menuItem = new UIMenuItem("Create a Mission", "Create a new mission.");
                 menuItem.Activated += (sender, item) =>
                 {
                     CreateNewMission();
@@ -47,7 +47,7 @@ namespace MissionCreator.Editor
             }
 
             {
-                var menuItem = new NativeMenuItem("Play Mission", "Play a mission.");
+                var menuItem = new UIMenuItem("Play Mission", "Play a mission.");
                 menuItem.Activated += (sender, item) =>
                 {
                     GameFiber.StartNew(delegate
@@ -74,7 +74,7 @@ namespace MissionCreator.Editor
             }
 
             {
-                var menuItem = new NativeMenuItem("Load Mission", "Load your mission for editing.");
+                var menuItem = new UIMenuItem("Load Mission", "Load your mission for editing.");
                 menuItem.Activated += (sender, item) =>
                 {
                     GameFiber.StartNew(delegate
@@ -100,7 +100,7 @@ namespace MissionCreator.Editor
             }
 
             {
-                var menuItem = new NativeMenuItem("Exit to Grand Theft Auto V", "Leave the Mission Creator");
+                var menuItem = new UIMenuItem("Exit to Grand Theft Auto V", "Leave the Mission Creator");
                 menuItem.Activated += (sender, item) =>
                 {
                     if(!EntryPoint.MissionPlayer.IsMissionPlaying)
@@ -483,7 +483,7 @@ namespace MissionCreator.Editor
                     blip.Scale = 0.7f;
                     _blips.Add(blip);
                     if (ped.WeaponHash != 0)
-                        ((Ped)ped.GetEntity()).GiveNewWeapon(ped.WeaponHash, ped.WeaponAmmo, true);
+                        ((Ped)ped.GetEntity()).Inventory.GiveNewWeapon(ped.WeaponHash, (short)ped.WeaponAmmo, true);
 
                 }
 
@@ -501,7 +501,7 @@ namespace MissionCreator.Editor
                         BlockPermanentEvents = true,
                     });
                     if(spawnpoint.WeaponHash != 0)
-                    ((Ped)spawnpoint.GetEntity()).GiveNewWeapon(spawnpoint.WeaponHash, spawnpoint.WeaponAmmo, true);
+                    ((Ped)spawnpoint.GetEntity()).Inventory.GiveNewWeapon(spawnpoint.WeaponHash, (short)spawnpoint.WeaponAmmo, true);
                     var blip = spawnpoint.GetEntity().AttachBlip();
                     blip.Color = Color.White;
                     _blips.Add(blip);
@@ -523,7 +523,7 @@ namespace MissionCreator.Editor
                         BlockPermanentEvents = true,
                     });
                     if (ped.WeaponHash != 0)
-                        ((Ped)ped.GetPed()).GiveNewWeapon(ped.WeaponHash, ped.WeaponAmmo, true);
+                        ((Ped)ped.GetPed()).Inventory.GiveNewWeapon(ped.WeaponHash, (short)ped.WeaponAmmo, true);
                     var blip = ped.GetPed().AttachBlip();
                     blip.Color = Color.Red;
                     blip.Scale = 0.7f;
@@ -681,7 +681,7 @@ namespace MissionCreator.Editor
 
             {
                 var nestMenu = new MissionInfoMenu(CurrentMission);
-                var nestItem = new NativeMenuItem("Mission Details");
+                var nestItem = new UIMenuItem("Mission Details");
                 _missionMenu.AddItem(nestItem);
                 _missionMenu.BindMenuToItem(nestMenu, nestItem);
                 _menuPool.Add(nestMenu);
@@ -690,7 +690,7 @@ namespace MissionCreator.Editor
 
             {
                 var nestMenu = new PlacementMenu(CurrentMission);
-                var nestItem = new NativeMenuItem("Placement");
+                var nestItem = new UIMenuItem("Placement");
                 _missionMenu.AddItem(nestItem);
                 _missionMenu.BindMenuToItem(nestMenu, nestItem);
                 _menuPool.Add(nestMenu);
@@ -699,7 +699,7 @@ namespace MissionCreator.Editor
             }
 
             {
-                var nestItem = new NativeMenuItem("Cutscenes");
+                var nestItem = new UIMenuItem("Cutscenes");
                 _missionMenu.AddItem(nestItem);
                 _missionMenu.BindMenuToItem(_cutsceneUi.CutsceneMenus, nestItem);
                 nestItem.Activated += (sender, item) =>
@@ -709,7 +709,7 @@ namespace MissionCreator.Editor
             }
 
             {
-                var item = new NativeMenuItem("Save Mission");
+                var item = new UIMenuItem("Save Mission");
                 _missionMenu.AddItem(item);
                 item.Activated += (sender, selectedItem) =>
                 {
@@ -729,7 +729,7 @@ namespace MissionCreator.Editor
             }
 
             {
-                var exitItem = new NativeMenuItem("Exit");
+                var exitItem = new UIMenuItem("Exit");
                 exitItem.Activated += (sender, item) =>
                 {
                     LeaveEditor();
@@ -1130,10 +1130,10 @@ namespace MissionCreator.Editor
         {
             foreach (var pair in _missionMenu.Children)
             {
-                if(pair.Value.MenuItems.Any(m => m.RightBadge == NativeMenuItem.BadgeStyle.Alert))
-                    pair.Key?.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                if(pair.Value.MenuItems.Any(m => m.RightBadge == UIMenuItem.BadgeStyle.Alert))
+                    pair.Key?.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                 else
-                    pair.Key?.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                    pair.Key?.SetRightBadge(UIMenuItem.BadgeStyle.None);
             }
         }
 

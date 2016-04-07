@@ -107,7 +107,7 @@ namespace MissionCreator.CutsceneEditor
 
             {
                 var menu = new CreateCutsceneMenu(this);
-                var item = new NativeMenuItem("Create Cutscene");
+                var item = new UIMenuItem("Create Cutscene");
                 CutsceneMenus.AddItem(item);
                 CutsceneMenus.BindMenuToItem(menu, item);
                 _children.Add(menu);
@@ -115,7 +115,7 @@ namespace MissionCreator.CutsceneEditor
 
             foreach (var cutscene in Editor.Editor.CurrentMission.Cutscenes)
             {
-                var item = new NativeMenuItem(cutscene.Name);
+                var item = new UIMenuItem(cutscene.Name);
                 CutsceneMenus.AddItem(item);
                 item.Activated += (sender, selectedItem) =>
                 {

@@ -32,9 +32,9 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Title
             {
-                var item = new NativeMenuItem("Title");
+                var item = new UIMenuItem("Title");
                 if(string.IsNullOrEmpty(data.Name))
-                    item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                    item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                 else
                     item.SetRightLabel(data.Name.Length > 20 ? data.Name.Substring(0, 20) + "..." : data.Name);
 
@@ -47,13 +47,13 @@ namespace MissionCreator.Editor.NestedMenus
                         string title = Util.GetUserInput();
                         if (string.IsNullOrEmpty(title))
                         {
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             Editor.CurrentMission.Name = "";
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.DisableControlEnabling = false;
                             return;
                         }
-                        item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        item.SetRightBadge(UIMenuItem.BadgeStyle.None);
                         Editor.CurrentMission.Name = title;
                         selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
                         SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
@@ -66,9 +66,9 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Description
             {
-                var item = new NativeMenuItem("Description");
+                var item = new UIMenuItem("Description");
                 if (string.IsNullOrEmpty(data.Description))
-                    item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                    item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                 else
                     item.SetRightLabel(data.Description.Length > 20 ? data.Description.Substring(0, 20) + "..." : data.Description);
 
@@ -81,13 +81,13 @@ namespace MissionCreator.Editor.NestedMenus
                         string title = Util.GetUserInput();
                         if (string.IsNullOrEmpty(title))
                         {
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             Editor.CurrentMission.Description = "";
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.DisableControlEnabling = false;
                             return;
                         }
-                        item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        item.SetRightBadge(UIMenuItem.BadgeStyle.None);
                         Editor.CurrentMission.Description = title;
                         selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
                         SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
@@ -100,7 +100,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Author
             {
-                var item = new NativeMenuItem("Author");
+                var item = new UIMenuItem("Author");
                 if (string.IsNullOrEmpty(data.Author))
                 {
                     var name = (string)NativeFunction.CallByHash(0x198D161F458ECC7F, typeof(string));
@@ -111,7 +111,7 @@ namespace MissionCreator.Editor.NestedMenus
                     }
                     else
                     {
-                        item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                        item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                     }
                 }
                 else
@@ -128,13 +128,13 @@ namespace MissionCreator.Editor.NestedMenus
                         string title = Util.GetUserInput();
                         if (string.IsNullOrEmpty(title))
                         {
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             Editor.CurrentMission.Author = "";
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.DisableControlEnabling = false;
                             return;
                         }
-                        item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        item.SetRightBadge(UIMenuItem.BadgeStyle.None);
                         Editor.CurrentMission.Author = title;
                         selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
                         SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
@@ -147,7 +147,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Weather
             {
-                var item = new MenuListItem("Weather", StaticData.StaticLists.WeatherTypes,
+                var item = new UIMenuListItem("Weather", StaticData.StaticLists.WeatherTypes,
                     StaticData.StaticLists.WeatherTypes.IndexOf(data.Weather.ToString()));
                 AddItem(item);
 
@@ -160,7 +160,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Time of Day
             {
-                var item = new MenuListItem("Time", StaticData.StaticLists.TimesList,
+                var item = new UIMenuListItem("Time", StaticData.StaticLists.TimesList,
                     StaticData.StaticLists.TimesList.IndexOf(
                         StaticData.StaticLists.TimeTranslation.FirstOrDefault(p => p.Value == data.Time).Key));
                 AddItem(item);
@@ -174,16 +174,16 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Time Limit
             {
-                var item = new MenuCheckboxItem("Time Limit", data.TimeLimit.HasValue);
+                var item = new UIMenuCheckboxItem("Time Limit", data.TimeLimit.HasValue);
                 AddItem(item);
 
-                var inputItem = new NativeMenuItem("Seconds");
+                var inputItem = new UIMenuItem("Seconds");
                 AddItem(inputItem);
 
                 if (data.TimeLimit.HasValue)
                 {
                     if(data.TimeLimit.Value == 0)
-                        inputItem.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                        inputItem.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                     else
                         inputItem.SetRightLabel(data.TimeLimit.Value.ToString());
                 }
@@ -199,7 +199,7 @@ namespace MissionCreator.Editor.NestedMenus
                         string title = Util.GetUserInput();
                         if (string.IsNullOrEmpty(title))
                         {
-                            inputItem.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            inputItem.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             data.TimeLimit = 0;
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.DisableControlEnabling = false;
@@ -209,7 +209,7 @@ namespace MissionCreator.Editor.NestedMenus
                         if (!int.TryParse(title, NumberStyles.Integer, CultureInfo.InvariantCulture, out seconds))
                         {
                             Game.DisplayNotification("~h~ERROR~h~: That is not a valid number.");
-                            inputItem.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            inputItem.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             data.TimeLimit = 0;
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.DisableControlEnabling = false;
@@ -219,7 +219,7 @@ namespace MissionCreator.Editor.NestedMenus
                         if (seconds == 0)
                         {
                             Game.DisplayNotification("~h~ERROR~h~: Time limit must be more than 0");
-                            inputItem.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            inputItem.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             data.TimeLimit = 0;
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.DisableControlEnabling = false;
@@ -227,7 +227,7 @@ namespace MissionCreator.Editor.NestedMenus
                         }
 
                         data.TimeLimit = seconds;
-                        inputItem.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        inputItem.SetRightBadge(UIMenuItem.BadgeStyle.None);
                         inputItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
                         SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                         Editor.DisableControlEnabling = false;
@@ -240,13 +240,13 @@ namespace MissionCreator.Editor.NestedMenus
                     {
                         data.TimeLimit = null;
                         inputItem.Enabled = false;
-                        inputItem.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        inputItem.SetRightBadge(UIMenuItem.BadgeStyle.None);
                         inputItem.SetRightLabel("");
                     }
                     else
                     {
                         inputItem.Enabled = true;
-                        inputItem.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                        inputItem.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                         inputItem.SetRightLabel("");
                     }
                 };
@@ -255,7 +255,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Max Wanted
             {
-                var item = new MenuListItem("Maximum Wanted Level", StaticData.StaticLists.WantedList, data.MaxWanted);
+                var item = new UIMenuListItem("Maximum Wanted Level", StaticData.StaticLists.WantedList, data.MaxWanted);
                 AddItem(item);
 
                 item.OnListChanged += (sender, index) =>
@@ -267,7 +267,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Min Wanted
             {
-                var item = new MenuListItem("Minimum Wanted Level", StaticData.StaticLists.WantedList, data.MinWanted);
+                var item = new UIMenuListItem("Minimum Wanted Level", StaticData.StaticLists.WantedList, data.MinWanted);
                 AddItem(item);
 
                 item.OnListChanged += (sender, index) =>
@@ -279,7 +279,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Interiors
             {
-                var item = new NativeMenuItem("Interiors");
+                var item = new UIMenuItem("Interiors");
                 var newMenu = new InteriorsMenu(data);
                 AddItem(item);
                 BindMenuToItem(newMenu, item);

@@ -32,7 +32,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Player
             {
-                var item = new NativeMenuItem("Player");
+                var item = new UIMenuItem("Player");
 
                 var dict = StaticData.PedData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Player Skin", "PLACE SPAWNPOINT");
@@ -112,7 +112,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Objectives
             {
-                var item = new NativeMenuItem("Objectives");
+                var item = new UIMenuItem("Objectives");
                 var newMenu = new ObjectivePlacementMenu(data);
                 Editor.Children.Add(newMenu);
                 BindMenuToItem(newMenu, item);
@@ -122,7 +122,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Actors
             {
-                var item = new NativeMenuItem("Actors");
+                var item = new UIMenuItem("Actors");
 
                 var dict = StaticData.PedData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Actor");
@@ -200,7 +200,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Cars
             {
-                var item = new NativeMenuItem("Cars");
+                var item = new UIMenuItem("Cars");
                 var dict = StaticData.VehicleData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Vehicle");
                 menu.Build("Muscle");
@@ -281,7 +281,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Pickups
             {
-                var item = new NativeMenuItem("Pickups");
+                var item = new UIMenuItem("Pickups");
                 var dict = StaticData.PickupData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Weapon");
                 
@@ -348,7 +348,7 @@ namespace MissionCreator.Editor.NestedMenus
             #region Objects
             {
                 {
-                    var item = new NativeMenuItem("Objects");
+                    var item = new UIMenuItem("Objects");
                     var dict = StaticData.ObjectData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                     var menu = new CategorySelectionMenu(dict, "Model");
 
@@ -438,11 +438,11 @@ namespace MissionCreator.Editor.NestedMenus
         {
             if (Editor.CurrentMission?.Spawnpoints?.Count == 0)
             {
-                MenuItems[0]?.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);    
+                MenuItems[0]?.SetRightBadge(UIMenuItem.BadgeStyle.Alert);    
             }
             else
             {
-                MenuItems[0]?.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                MenuItems[0]?.SetRightBadge(UIMenuItem.BadgeStyle.None);
             }
 
             Children.ForEach(m =>

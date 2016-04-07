@@ -32,7 +32,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region SpawnAfter
             {
-                var item = new MenuListItem("Spawn After Objective", StaticData.StaticLists.NumberMenu, actor.SpawnAfter);
+                var item = new UIMenuListItem("Spawn After Objective", StaticData.StaticLists.NumberMenu, actor.SpawnAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -45,7 +45,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region ObjectiveIndex
             {
-                var item = new MenuListItem("Objective Index", StaticData.StaticLists.ObjectiveIndexList, actor.ActivateAfter);
+                var item = new UIMenuListItem("Objective Index", StaticData.StaticLists.ObjectiveIndexList, actor.ActivateAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -54,14 +54,14 @@ namespace MissionCreator.Editor.NestedMenus
 
                     if (string.IsNullOrEmpty(Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter]))
                     {
-                        MenuItems[2].SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                        MenuItems[2].SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                         MenuItems[2].SetRightLabel("");
                     }
                     else
                     {
                         var title = Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter];
                         MenuItems[2].SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
-                        MenuItems[2].SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        MenuItems[2].SetRightBadge(UIMenuItem.BadgeStyle.None);
                     }
                 };
 
@@ -74,9 +74,9 @@ namespace MissionCreator.Editor.NestedMenus
             
             #region Objective Name
             {
-                var item = new NativeMenuItem("Objective Name");
+                var item = new UIMenuItem("Objective Name");
                 if (string.IsNullOrEmpty(Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter]))
-                    item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                    item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                 else
                 {
                     var title = Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter];
@@ -92,13 +92,13 @@ namespace MissionCreator.Editor.NestedMenus
                         string title = Util.GetUserInput();
                         if (string.IsNullOrEmpty(title))
                         {
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter] = "";
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.DisableControlEnabling = false;
                             return;
                         }
-                        item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        item.SetRightBadge(UIMenuItem.BadgeStyle.None);
                         title = Regex.Replace(title, "-=", "~");
                         Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter] = title;
                         selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
@@ -115,11 +115,11 @@ namespace MissionCreator.Editor.NestedMenus
                     ? StaticData.StaticLists.VehicleHealthChoses.FindIndex(n => n == (dynamic)1000)
                     : StaticData.StaticLists.VehicleHealthChoses.FindIndex(n => n == (dynamic)actor.Health);
 
-                var item = new MenuListItem("Health", StaticData.StaticLists.VehicleHealthChoses, listIndex);
+                var item = new UIMenuListItem("Health", StaticData.StaticLists.VehicleHealthChoses, listIndex);
 
                 item.OnListChanged += (sender, index) =>
                 {
-                    int newAmmo = int.Parse(((MenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
+                    int newAmmo = int.Parse(((UIMenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
                     actor.Health = newAmmo;
                 };
 
@@ -129,7 +129,7 @@ namespace MissionCreator.Editor.NestedMenus
             
             #region Passengers
             {
-                var item = new NativeMenuItem("Occupants");
+                var item = new UIMenuItem("Occupants");
                 AddItem(item);
                 if (((Vehicle)actor.GetVehicle()).HasOccupants)
                 {
@@ -145,7 +145,7 @@ namespace MissionCreator.Editor.NestedMenus
                         {
                             var act = Editor.CurrentMission.Actors.FirstOrDefault(a => a.GetEntity().Handle.Value == ped.Handle.Value);
                             if (act == null) continue;
-                            var routedItem = new NativeMenuItem(i == 0 ? "Driver" : "Passenger #" + i);
+                            var routedItem = new UIMenuItem(i == 0 ? "Driver" : "Passenger #" + i);
                             routedItem.Activated += (sender, selectedItem) =>
                             {
                                 Editor.DisableControlEnabling = true;
@@ -180,7 +180,7 @@ namespace MissionCreator.Editor.NestedMenus
                                 .OfType<SerializableActorObjective>()
                                 .FirstOrDefault(a => a.GetPed().Handle.Value == ped.Handle.Value);
                             if (act == null) continue;
-                            var routedItem = new NativeMenuItem(i == 0 ? "Objective Driver" : "Objective Passenger #" + i);
+                            var routedItem = new UIMenuItem(i == 0 ? "Objective Driver" : "Objective Passenger #" + i);
                             routedItem.Activated += (sender, selectedItem) =>
                             {
                                 Editor.DisableControlEnabling = true;
@@ -225,7 +225,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Show Health Bar
             {
-                var item = new MenuCheckboxItem("Show Healthbar", actor.ShowHealthBar);
+                var item = new UIMenuCheckboxItem("Show Healthbar", actor.ShowHealthBar);
                 AddItem(item);
 
                 item.CheckboxEvent += (sender, @checked) =>
@@ -238,7 +238,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Bar Name
             {
-                var item = new NativeMenuItem("Healthbar Label");
+                var item = new UIMenuItem("Healthbar Label");
                 AddItem(item);
 
                 if (!actor.ShowHealthBar)
@@ -276,7 +276,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Objective Type
             {
-                var item = new MenuListItem("Objective Type", StaticData.StaticLists.ObjectiveTypeList, actor.ObjectiveType);
+                var item = new UIMenuListItem("Objective Type", StaticData.StaticLists.ObjectiveTypeList, actor.ObjectiveType);
 
                 item.OnListChanged += (sender, index) =>
                 {

@@ -47,17 +47,17 @@ namespace MissionCreator.Editor.NestedMenus
         {
             Clear();
             var typeList = Items.Select(pair => pair.Key).Cast<dynamic>().ToList();
-            var typeItem = new MenuListItem("Category", typeList, typeList.FindIndex(n => n.ToString() == type));
+            var typeItem = new UIMenuListItem("Category", typeList, typeList.FindIndex(n => n.ToString() == type));
             AddItem(typeItem);
 
             typeItem.OnListChanged += (sender, index) =>
             {
-                string newType = ((MenuListItem) MenuItems[0]).IndexToItem(((MenuListItem) MenuItems[0]).Index).ToString();
+                string newType = ((UIMenuListItem) MenuItems[0]).IndexToItem(((UIMenuListItem) MenuItems[0]).Index).ToString();
                 Build(newType);
                 SelectionChanged?.Invoke(this, EventArgs.Empty);
             };
 
-            var itemListItem = new MenuListItem(ItemName, Items[type].Select(s => (dynamic)s).ToList(), 0);
+            var itemListItem = new UIMenuListItem(ItemName, Items[type].Select(s => (dynamic)s).ToList(), 0);
             AddItem(itemListItem);
 
             CurrentSelectedItem = (string)itemListItem.IndexToItem(0);

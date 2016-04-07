@@ -32,7 +32,7 @@ namespace MissionCreator.CutsceneEditor
 
             #region Name
             {
-                var item = new NativeMenuItem("Name");
+                var item = new UIMenuItem("Name");
                 item.SetRightLabel(cutscene.Name);
                 AddItem(item);
                 item.Activated += (sender, selectedItem) =>
@@ -45,7 +45,7 @@ namespace MissionCreator.CutsceneEditor
                         string title = Util.GetUserInput();
                         if (string.IsNullOrEmpty(title))
                         {
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             item.SetRightLabel("");
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.Editor.DisableControlEnabling = false;
@@ -54,7 +54,7 @@ namespace MissionCreator.CutsceneEditor
                             return;
                         }
                         Editor.Editor.DisableControlEnabling = false;
-                        item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        item.SetRightBadge(UIMenuItem.BadgeStyle.None);
                         cutscene.Name = title;
                         selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
                         SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
@@ -69,7 +69,7 @@ namespace MissionCreator.CutsceneEditor
             #region Play at Objective
 
             {
-                var item = new MenuListItem("Play at Objective", StaticData.StaticLists.ObjectiveIndexList, cutscene.PlayAt);
+                var item = new UIMenuListItem("Play at Objective", StaticData.StaticLists.ObjectiveIndexList, cutscene.PlayAt);
                 AddItem(item);
                 item.OnListChanged += (sender, index) =>
                 {
@@ -80,7 +80,7 @@ namespace MissionCreator.CutsceneEditor
 
             #region Duration
             {
-                var item = new NativeMenuItem("Duration in Seconds");
+                var item = new UIMenuItem("Duration in Seconds");
                 item.SetRightLabel(((int)(cutscene.Length/1000f)).ToString());
                 AddItem(item);
                 item.Activated += (sender, selectedItem) =>
@@ -93,7 +93,7 @@ namespace MissionCreator.CutsceneEditor
                         string title = Util.GetUserInput();
                         if (string.IsNullOrEmpty(title))
                         {
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             item.SetRightLabel("");
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             cutscene.Length = 0;
@@ -104,7 +104,7 @@ namespace MissionCreator.CutsceneEditor
                         int len;
                         if (!int.TryParse(title, NumberStyles.Integer, CultureInfo.InvariantCulture, out len))
                         {
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             item.SetRightLabel("");
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             cutscene.Length = 0;
@@ -116,7 +116,7 @@ namespace MissionCreator.CutsceneEditor
 
                         if (len <= 0)
                         {
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             item.SetRightLabel("");
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             cutscene.Length = 0;
@@ -127,7 +127,7 @@ namespace MissionCreator.CutsceneEditor
                         }
 
                         Editor.Editor.DisableControlEnabling = false;
-                        item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        item.SetRightBadge(UIMenuItem.BadgeStyle.None);
                         cutscene.Length = len*1000;
                         selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
                         SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
@@ -141,7 +141,7 @@ namespace MissionCreator.CutsceneEditor
             #region Edit
 
             {
-                var item = new NativeMenuItem("Continue");
+                var item = new UIMenuItem("Continue");
                 AddItem(item);
                 if (cutscene.Length == 0 || string.IsNullOrEmpty(cutscene.Name))
                     MenuItems[3].Enabled = false;

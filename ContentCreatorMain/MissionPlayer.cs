@@ -334,7 +334,7 @@ namespace MissionCreator
                 Game.LocalPlayer.Model = Util.RequestModel(sp.ModelHash);
 
                 if (sp.WeaponHash != 0)
-                    Game.LocalPlayer.Character.GiveNewWeapon(sp.WeaponHash, sp.WeaponAmmo, true);
+                    Game.LocalPlayer.Character.Inventory.GiveNewWeapon(sp.WeaponHash, (short)sp.WeaponAmmo, true);
 
                 Game.LocalPlayer.Character.Health = sp.Health;
                 Game.LocalPlayer.Character.Armor = sp.Armor;
@@ -361,7 +361,7 @@ namespace MissionCreator
                     blip.Scale = 0.6f;
 
                     if (actor.WeaponHash != 0)
-                        ped.GiveNewWeapon(actor.WeaponHash, actor.WeaponAmmo, true);
+                        ped.Inventory.GiveNewWeapon(actor.WeaponHash, (short)actor.WeaponAmmo, true);
 
                     ped.Health = actor.Health;
                     ped.Armor = actor.Armor;
@@ -416,7 +416,7 @@ namespace MissionCreator
                                         if (ped.IsInAnyVehicle(true))
                                         {
                                             pedTask = ped.Tasks.DriveToPosition(currentWaypoint.Position,
-                                                currentWaypoint.VehicleSpeed, (DriveToPositionFlags)currentWaypoint.DrivingStyle);
+                                                currentWaypoint.VehicleSpeed, (VehicleDrivingFlags)currentWaypoint.DrivingStyle);
                                         }
                                         break;
                                     case WaypointTypes.Run:
@@ -583,7 +583,7 @@ namespace MissionCreator
 
                 
                 if (actor.WeaponHash != 0)
-                    ped.GiveNewWeapon(actor.WeaponHash, actor.WeaponAmmo, true);
+                    ped.Inventory.GiveNewWeapon(actor.WeaponHash, (short)actor.WeaponAmmo, true);
 
                 NativeFunction.CallByName<uint>("SET_PED_FIRING_PATTERN", ped.Handle.Value, 0xC6EE6B4C);
 
@@ -661,7 +661,7 @@ namespace MissionCreator
                                         if (ped.IsInAnyVehicle(true))
                                         {
                                             pedTask = ped.Tasks.DriveToPosition(currentWaypoint.Position,
-                                                currentWaypoint.VehicleSpeed, (DriveToPositionFlags)currentWaypoint.DrivingStyle);
+                                                currentWaypoint.VehicleSpeed, (VehicleDrivingFlags)currentWaypoint.DrivingStyle);
                                         }
                                         break;
                                     case WaypointTypes.Run:

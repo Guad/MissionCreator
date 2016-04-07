@@ -481,6 +481,13 @@ namespace MissionCreator
                                     case WaypointTypes.Wander:
                                         pedTask = ped.Tasks.Wander();
                                         break;
+                                    case WaypointTypes.CruiseWithVehicle:
+                                        if (ped.IsInAnyVehicle(false))
+                                            pedTask = ped.Tasks.CruiseWithVehicle(ped.CurrentVehicle,
+                                                currentWaypoint.VehicleSpeed, (DriveToPositionFlags)currentWaypoint.DrivingStyle);
+
+                                        
+                                        break;
                                     case WaypointTypes.Shoot:
                                         pedTask = null;
                                         NativeFunction.CallByName<uint>("TASK_SHOOT_AT_COORD", ped.Handle.Value,
@@ -678,6 +685,11 @@ namespace MissionCreator
                                                 heading, 2f, 0.3f, currentWaypoint.Duration == 0 ? -1 : (int)currentWaypoint.Duration);
 
                                         }
+                                        break;
+                                    case WaypointTypes.CruiseWithVehicle:
+                                        if (ped.IsInAnyVehicle(true))
+                                            pedTask = ped.Tasks.CruiseWithVehicle(ped.CurrentVehicle,
+                                                currentWaypoint.VehicleSpeed, (DriveToPositionFlags)currentWaypoint.DrivingStyle);
                                         break;
                                     case WaypointTypes.Walk:
                                         {

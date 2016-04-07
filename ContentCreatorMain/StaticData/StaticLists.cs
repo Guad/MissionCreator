@@ -55,7 +55,7 @@ namespace MissionCreator.StaticData
 
         public static List<Tuple<string, int>> DrivingStylesList = new List<Tuple<string, int>>
         {
-            new Tuple<string, int>("Normal", 0xC00AB),
+            new Tuple<string, int>("Normal", (int)(DriveToPositionFlags.RespectPeds | DriveToPositionFlags.RespectVehicles) | 128 ),
             new Tuple<string, int>("Ignore Lights ", 0x2C0025),
             new Tuple<string, int>("Sometimes Overtake Traffic", 5),
             new Tuple<string, int>("Rushed", 0x400C0025),

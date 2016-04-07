@@ -1890,13 +1890,15 @@ namespace MissionCreator.Editor
 
             if (_isCopying && _attachedMarker != null)
             {
-                if (Game.IsControlJustPressed(0, GameControl.Attack))
+                if (Game.IsControlJustPressed(0, GameControl.CellphoneCancel))
                 {
                     _attachedMarker = null;
                     _isCopying = false;
                 }
                 return;
             }
+
+
 
             if (MarkerData.RepresentedBy != null && MarkerData.RepresentedBy.IsValid() &&
                 Game.IsControlJustPressed(0, GameControl.CellphoneSelect) &&

@@ -116,7 +116,7 @@ namespace MissionCreator.Waypoints
                 var item = new NativeMenuItem("Duration", "Task duration in seconds. Leave blank to wait until the task is done.");
                 _waypointPropertiesMenu.AddItem(item);
 
-                item.SetRightLabel(waypoint.Duration == 0 ? "Wait Until Done" : waypoint.Duration.ToString());
+                item.SetRightLabel(waypoint.Duration == 0 ? "Wait Until Done" : (waypoint.Duration/1000).ToString());
 
 
                 item.Activated += (sender, selectedItem) =>
@@ -183,7 +183,7 @@ namespace MissionCreator.Waypoints
                 _children.Add(menu);
             }
 
-            if (waypoint.Type == WaypointTypes.Drive)
+            if (waypoint.Type == WaypointTypes.Drive || waypoint.Type == WaypointTypes.CruiseWithVehicle)
             {
                 {
                     var item = new NativeMenuItem("Driving Speed", "Driving speed in meters per second.");

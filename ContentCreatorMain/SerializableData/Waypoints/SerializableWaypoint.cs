@@ -10,6 +10,7 @@ namespace MissionCreator.SerializableData.Waypoints
         EnterVehicle,
         ExitVehicle,
         Wander,
+        CruiseWithVehicle,
         Shoot,
         Wait,
         Drive

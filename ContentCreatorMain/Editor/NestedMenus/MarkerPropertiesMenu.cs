@@ -31,7 +31,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region SpawnAfter
             {
-                var item = new MenuListItem("Spawn After Objective", StaticData.StaticLists.NumberMenu, actor.SpawnAfter);
+                var item = new UIMenuListItem("Spawn After Objective", StaticData.StaticLists.NumberMenu, actor.SpawnAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -44,7 +44,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region ObjectiveIndex
             {
-                var item = new MenuListItem("Objective Index", StaticData.StaticLists.ObjectiveIndexList, actor.ActivateAfter);
+                var item = new UIMenuListItem("Objective Index", StaticData.StaticLists.ObjectiveIndexList, actor.ActivateAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -53,14 +53,14 @@ namespace MissionCreator.Editor.NestedMenus
 
                     if (string.IsNullOrEmpty(Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter]))
                     {
-                        MenuItems[2].SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                        MenuItems[2].SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                         MenuItems[2].SetRightLabel("");
                     }
                     else
                     {
                         var title = Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter];
                         MenuItems[2].SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
-                        MenuItems[2].SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        MenuItems[2].SetRightBadge(UIMenuItem.BadgeStyle.None);
                     }
                 };
 
@@ -73,9 +73,9 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Objective Name
             {
-                var item = new NativeMenuItem("Objective Name");
+                var item = new UIMenuItem("Objective Name");
                 if (string.IsNullOrEmpty(Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter]))
-                    item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                    item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                 else
                 {
                     var title = Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter];
@@ -91,13 +91,13 @@ namespace MissionCreator.Editor.NestedMenus
                         string title = Util.GetUserInput();
                         if (string.IsNullOrEmpty(title))
                         {
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter] = "";
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.DisableControlEnabling = false;
                             return;
                         }
-                        item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        item.SetRightBadge(UIMenuItem.BadgeStyle.None);
                         title = Regex.Replace(title, "-=", "~");
                         Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter] = title;
                         selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
@@ -113,7 +113,7 @@ namespace MissionCreator.Editor.NestedMenus
             {
                 var col = Color.FromArgb(actor.Alpha, (int) actor.Color.X, (int) actor.Color.Y, (int) actor.Color.Z).ToKnownColor();
                 var idx = StaticData.StaticLists.KnownColors.IndexOf(col);
-                var item = new MenuListItem("Color", StaticData.StaticLists.KnownColors, idx == -1 ? 0 : idx);
+                var item = new UIMenuListItem("Color", StaticData.StaticLists.KnownColors, idx == -1 ? 0 : idx);
 
                 item.OnListChanged += (sender, index) =>
                 {

@@ -34,7 +34,7 @@ namespace MissionCreator.Editor.NestedMenus
             {
                 var data = Editor.ReadMission(path);
                 if (data == null) continue;
-                var item = new NativeMenuItem(data.Name, data.Description);
+                var item = new UIMenuItem(data.Name, data.Description);
                 AddItem(item);
                 item.Activated += (sender, selectedItem) =>
                 {

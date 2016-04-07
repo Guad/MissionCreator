@@ -31,7 +31,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region SpawnAfter
             {
-                var item = new MenuListItem("Spawn After Objective", StaticData.StaticLists.NumberMenu, veh.SpawnAfter);
+                var item = new UIMenuListItem("Spawn After Objective", StaticData.StaticLists.NumberMenu, veh.SpawnAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -44,7 +44,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region RemoveAfter
             {
-                var item = new MenuListItem("Remove After Objective", StaticData.StaticLists.RemoveAfterList, veh.RemoveAfter);
+                var item = new UIMenuListItem("Remove After Objective", StaticData.StaticLists.RemoveAfterList, veh.RemoveAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -62,11 +62,11 @@ namespace MissionCreator.Editor.NestedMenus
                     ? StaticData.StaticLists.VehicleHealthChoses.FindIndex(n => n == (dynamic)1000)
                     : StaticData.StaticLists.VehicleHealthChoses.FindIndex(n => n == (dynamic)veh.Health);
 
-                var item = new MenuListItem("Health", StaticData.StaticLists.VehicleHealthChoses, listIndex);
+                var item = new UIMenuListItem("Health", StaticData.StaticLists.VehicleHealthChoses, listIndex);
 
                 item.OnListChanged += (sender, index) =>
                 {
-                    int newAmmo = int.Parse(((MenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
+                    int newAmmo = int.Parse(((UIMenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
                     veh.Health = newAmmo;
                 };
 
@@ -76,7 +76,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region FailOnDeath
             {
-                var item = new MenuCheckboxItem("Mission Fail On Death", veh.FailMissionOnDeath);
+                var item = new UIMenuCheckboxItem("Mission Fail On Death", veh.FailMissionOnDeath);
                 item.CheckboxEvent += (sender, @checked) =>
                 {
                     veh.FailMissionOnDeath = @checked;
@@ -88,7 +88,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Passengers
             {
-                var item = new NativeMenuItem("Occupants");
+                var item = new UIMenuItem("Occupants");
                 AddItem(item);
                 if (((Vehicle)veh.GetEntity()).HasOccupants)
                 {
@@ -104,7 +104,7 @@ namespace MissionCreator.Editor.NestedMenus
                         {
                             var act = Editor.CurrentMission.Actors.FirstOrDefault(a => a.GetEntity().Handle.Value == ped.Handle.Value);
                             if (act == null) continue;
-                            var routedItem = new NativeMenuItem(i == 0 ? "Driver" : "Passenger #" + i);
+                            var routedItem = new UIMenuItem(i == 0 ? "Driver" : "Passenger #" + i);
                             routedItem.Activated += (sender, selectedItem) =>
                             {
                                 Editor.DisableControlEnabling = true;
@@ -139,7 +139,7 @@ namespace MissionCreator.Editor.NestedMenus
                                 .OfType<SerializableActorObjective>()
                                 .FirstOrDefault(a => a.GetPed().Handle.Value == ped.Handle.Value);
                             if (act == null) continue;
-                            var routedItem = new NativeMenuItem(i == 0 ? "Objective Driver" : "Objective Passenger #" + i);
+                            var routedItem = new UIMenuItem(i == 0 ? "Objective Driver" : "Objective Passenger #" + i);
                             routedItem.Activated += (sender, selectedItem) =>
                             {
                                 Editor.DisableControlEnabling = true;

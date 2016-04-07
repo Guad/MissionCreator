@@ -94,7 +94,7 @@ namespace MissionCreator.Waypoints
             _placingWaypointType = (WaypointTypes)Enum.Parse(typeof(WaypointTypes), list[0]);
             for (int i = 0; i < list.Count; i++)
             {
-                var item = new NativeMenuItem("Create Waypoint of Type: " + list[i]);
+                var item = new UIMenuItem("Create Waypoint of Type: " + list[i]);
                 CreateWaypointMenu.AddItem(item);
             }
 
@@ -113,7 +113,7 @@ namespace MissionCreator.Waypoints
             _waypointPropertiesMenu.Subtitle.Caption = waypoint.Type.ToString().ToUpper() + " PROPERTIES";
 
             {
-                var item = new NativeMenuItem("Duration", "Task duration in seconds. Leave blank to wait until the task is done.");
+                var item = new UIMenuItem("Duration", "Task duration in seconds. Leave blank to wait until the task is done.");
                 _waypointPropertiesMenu.AddItem(item);
 
                 item.SetRightLabel(waypoint.Duration == 0 ? "Wait Until Done" : waypoint.Duration.ToString());
@@ -153,7 +153,7 @@ namespace MissionCreator.Waypoints
             {
                 var db = StaticData.AnimData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(db, "Animation", true, "SELECT ANIMATION");
-                var item = new NativeMenuItem("Select Animation");
+                var item = new UIMenuItem("Select Animation");
                 menu.Build(db.ElementAt(0).Key);
 
                 if (!string.IsNullOrEmpty(waypoint.AnimName))
@@ -186,7 +186,7 @@ namespace MissionCreator.Waypoints
             if (waypoint.Type == WaypointTypes.Drive)
             {
                 {
-                    var item = new NativeMenuItem("Driving Speed", "Driving speed in meters per second.");
+                    var item = new UIMenuItem("Driving Speed", "Driving speed in meters per second.");
                     _waypointPropertiesMenu.AddItem(item);
 
                     item.SetRightLabel(waypoint.VehicleSpeed == 0 ? "Default" : waypoint.VehicleSpeed.ToString());
@@ -226,7 +226,7 @@ namespace MissionCreator.Waypoints
                     var parsedList = StaticData.StaticLists.DrivingStylesList.Select(t => (dynamic)t.Item1);
                     var indexOf =
                         StaticData.StaticLists.DrivingStylesList.FindIndex(tup => tup.Item2 == waypoint.DrivingStyle);
-                    var item = new MenuListItem("Driving Style", parsedList.ToList(), indexOf);
+                    var item = new UIMenuListItem("Driving Style", parsedList.ToList(), indexOf);
                     _waypointPropertiesMenu.AddItem(item);
 
                     item.OnListChanged += (sender, index) =>

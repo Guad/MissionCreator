@@ -31,7 +31,7 @@ namespace MissionCreator.Editor.NestedMenus
             Clear();
             #region Actors
             {
-                var item = new NativeMenuItem("Actors");
+                var item = new UIMenuItem("Actors");
 
                 var dict = StaticData.PedData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Skin");
@@ -110,7 +110,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Cars
             {
-                var item = new NativeMenuItem("Cars");
+                var item = new UIMenuItem("Cars");
                 var dict = StaticData.VehicleData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Vehicle");
                 menu.Build("Muscle");
@@ -193,7 +193,7 @@ namespace MissionCreator.Editor.NestedMenus
             
             #region Pickups
             {
-                var item = new NativeMenuItem("Pickups");
+                var item = new UIMenuItem("Pickups");
                 var dict = StaticData.PickupData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Weapon");
 
@@ -256,7 +256,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Checkpoints
             {
-                var item = new NativeMenuItem("Checkpoint");
+                var item = new UIMenuItem("Checkpoint");
                 var dict = StaticData.CheckpointData.Database.ToDictionary(k => k.Key, k => k.Value.Select(x => x.Item1).ToArray());
                 var menu = new CategorySelectionMenu(dict, "Checkpoint");
 
@@ -326,7 +326,7 @@ namespace MissionCreator.Editor.NestedMenus
             #endregion
             /*
             {
-                var item = new NativeMenuItem("Timer");
+                var item = new UIMenuItem("Timer");
                 AddItem(item);
             }*/
             RefreshIndex();

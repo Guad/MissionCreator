@@ -22,7 +22,7 @@ namespace MissionCreator.CutsceneEditor
             {
                 if (MenuItems.Count == 0)
                     return true;
-                return !(MenuItems[CurrentSelection] is MenuListItem);
+                return !(MenuItems[CurrentSelection] is UIMenuListItem);
             }
         }
 
@@ -90,7 +90,7 @@ namespace MissionCreator.CutsceneEditor
             {
                 #region CreateMarker
                 {
-                    var item = new NativeMenuItem("Create new Camera Marker");
+                    var item = new UIMenuItem("Create new Camera Marker");
                     AddItem(item);
                     item.Activated += (sender, selectedItem) =>
                     {
@@ -107,7 +107,7 @@ namespace MissionCreator.CutsceneEditor
                     };
                 }
                 {
-                    var item = new NativeMenuItem("Create new Subtitle Marker");
+                    var item = new UIMenuItem("Create new Subtitle Marker");
                     AddItem(item);
                     item.Activated += (sender, selectedItem) =>
                     {
@@ -122,7 +122,7 @@ namespace MissionCreator.CutsceneEditor
                 }
                 /*
                 {
-                    var item = new NativeMenuItem("Create new Actor Marker");
+                    var item = new UIMenuItem("Create new Actor Marker");
                     AddItem(item);
                     item.Activated += (sender, selectedItem) =>
                     {
@@ -136,7 +136,7 @@ namespace MissionCreator.CutsceneEditor
                 }
 
                 {
-                    var item = new NativeMenuItem("Create new Vehicle Marker");
+                    var item = new UIMenuItem("Create new Vehicle Marker");
                     AddItem(item);
                     item.Activated += (sender, selectedItem) =>
                     {
@@ -157,7 +157,7 @@ namespace MissionCreator.CutsceneEditor
                 new List<dynamic>(Enumerable.Range(0, (int)(GrandParent.CurrentCutscene.Length/100f) + 1).Select(n => (dynamic) (n/10f)));
 
             {
-                var item = new NativeMenuItem("Remove This Marker");
+                var item = new UIMenuItem("Remove This Marker");
                 item.Activated += (sender, selectedItem) =>
                 {
                     GrandParent.Markers.Remove(marker);
@@ -171,7 +171,7 @@ namespace MissionCreator.CutsceneEditor
                 var objList =
                     StaticData.StaticLists.InterpolationList.Select(x => (dynamic) (((InterpolationStyle) x).ToString()))
                         .ToList();
-                var item = new MenuListItem("Interpolation",
+                var item = new UIMenuListItem("Interpolation",
                     objList,
                     StaticData.StaticLists.InterpolationList.IndexOf(((CameraMarker)marker).Interpolation));
                 AddItem(item);
@@ -185,21 +185,21 @@ namespace MissionCreator.CutsceneEditor
             {
                 {
                     var indx = (dynamic)((SubtitleMarker)marker).Duration / 1000f;
-                    var item = new MenuListItem("Duration", timeList, timeList.IndexOf(indx == -1 ? 0 : indx));
+                    var item = new UIMenuListItem("Duration", timeList, timeList.IndexOf(indx == -1 ? 0 : indx));
                     AddItem(item);
 
                     item.OnListChanged += (sender, index) =>
                     {
-                        var floatPointTime = float.Parse(((MenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
+                        var floatPointTime = float.Parse(((UIMenuListItem)sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
                         ((SubtitleMarker)marker).Duration = (int)(floatPointTime * 1000);
                     };
                 }
                 
                 #region Text
                 {
-                    var item = new NativeMenuItem("Text");
+                    var item = new UIMenuItem("Text");
                     if (string.IsNullOrEmpty(((SubtitleMarker)marker).Content))
-                        item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                        item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                     else
                     {
                         var title = ((SubtitleMarker)marker).Content;
@@ -215,13 +215,13 @@ namespace MissionCreator.CutsceneEditor
                             string title = Util.GetUserInput();
                             if (string.IsNullOrEmpty(title))
                             {
-                                item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                                item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                                 ((SubtitleMarker)marker).Content = null;
                                 SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                                 Editor.Editor.DisableControlEnabling = false;
                                 return;
                             }
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.None);
                             title = Regex.Replace(title, "-=", "~");
                             ((SubtitleMarker)marker).Content = title;
                             selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
@@ -237,12 +237,12 @@ namespace MissionCreator.CutsceneEditor
 
             {
                 var indx = (dynamic) marker.Time/1000f;
-                var item = new MenuListItem("Time", timeList, timeList.IndexOf(indx == -1 ? 0 : indx));
+                var item = new UIMenuListItem("Time", timeList, timeList.IndexOf(indx == -1 ? 0 : indx));
                 AddItem(item);
 
                 item.OnListChanged += (sender, index) =>
                 {
-                    var floatPointTime = float.Parse(((MenuListItem) sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
+                    var floatPointTime = float.Parse(((UIMenuListItem) sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
                     marker.Time = (int)(floatPointTime*1000);
                     GrandParent.CurrentTimestamp = marker.Time;
                 };

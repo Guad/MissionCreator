@@ -31,7 +31,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region SpawnAfter
             {
-                var item = new MenuListItem("Spawn After Objective", StaticData.StaticLists.NumberMenu, actor.SpawnAfter);
+                var item = new UIMenuListItem("Spawn After Objective", StaticData.StaticLists.NumberMenu, actor.SpawnAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -44,7 +44,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region ObjectiveIndex
             {
-                var item = new MenuListItem("Objective Index", StaticData.StaticLists.ObjectiveIndexList, actor.ActivateAfter);
+                var item = new UIMenuListItem("Objective Index", StaticData.StaticLists.ObjectiveIndexList, actor.ActivateAfter);
 
                 item.OnListChanged += (sender, index) =>
                 {
@@ -53,14 +53,14 @@ namespace MissionCreator.Editor.NestedMenus
 
                     if (string.IsNullOrEmpty(Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter]))
                     {
-                        MenuItems[2].SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                        MenuItems[2].SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                         MenuItems[2].SetRightLabel("");
                     }
                     else
                     {
                         var title = Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter];
                         MenuItems[2].SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
-                        MenuItems[2].SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        MenuItems[2].SetRightBadge(UIMenuItem.BadgeStyle.None);
                     }
                 };
 
@@ -73,9 +73,9 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Objective Name
             {
-                var item = new NativeMenuItem("Objective Name");
+                var item = new UIMenuItem("Objective Name");
                 if (string.IsNullOrEmpty(Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter]))
-                    item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                    item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                 else
                 {
                     var title = Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter];
@@ -91,13 +91,13 @@ namespace MissionCreator.Editor.NestedMenus
                         string title = Util.GetUserInput();
                         if (string.IsNullOrEmpty(title))
                         {
-                            item.SetRightBadge(NativeMenuItem.BadgeStyle.Alert);
+                            item.SetRightBadge(UIMenuItem.BadgeStyle.Alert);
                             Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter] = "";
                             SetKey(Common.MenuControls.Back, GameControl.CellphoneCancel, 0);
                             Editor.DisableControlEnabling = false;
                             return;
                         }
-                        item.SetRightBadge(NativeMenuItem.BadgeStyle.None);
+                        item.SetRightBadge(UIMenuItem.BadgeStyle.None);
                         title = Regex.Replace(title, "-=", "~");
                         Editor.CurrentMission.ObjectiveNames[actor.ActivateAfter] = title;
                         selectedItem.SetRightLabel(title.Length > 20 ? title.Substring(0, 20) + "..." : title);
@@ -113,11 +113,11 @@ namespace MissionCreator.Editor.NestedMenus
                 var listIndex = actor.Ammo == 0
                     ? StaticData.StaticLists.AmmoChoses.FindIndex(n => n == (dynamic) 9999)
                     : StaticData.StaticLists.AmmoChoses.FindIndex(n => n == (dynamic) actor.Ammo);
-                var item = new MenuListItem("Ammo Count", StaticData.StaticLists.AmmoChoses, listIndex);
+                var item = new UIMenuListItem("Ammo Count", StaticData.StaticLists.AmmoChoses, listIndex);
 
                 item.OnListChanged += (sender, index) =>
                 {
-                    int newAmmo = int.Parse(((MenuListItem) sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
+                    int newAmmo = int.Parse(((UIMenuListItem) sender).IndexToItem(index).ToString(), CultureInfo.InvariantCulture);
                     actor.Ammo = newAmmo;
                 };
 
@@ -127,7 +127,7 @@ namespace MissionCreator.Editor.NestedMenus
 
             #region Respawn
             {
-                var item = new MenuCheckboxItem("Respawn", actor.Respawn);
+                var item = new UIMenuCheckboxItem("Respawn", actor.Respawn);
                 item.CheckboxEvent += (sender, @checked) =>
                 {
                     actor.Respawn = @checked;

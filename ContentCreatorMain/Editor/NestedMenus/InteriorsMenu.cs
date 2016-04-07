@@ -24,7 +24,7 @@ namespace MissionCreator.Editor.NestedMenus
             Clear();
             foreach (var pair in StaticData.IPLData.Database)
             {
-                var item = new MenuCheckboxItem(pair.Key, data.Interiors.Contains(pair.Key), pair.Value.Item1 ? "This interior requires the online map to load." : "");
+                var item = new UIMenuCheckboxItem(pair.Key, data.Interiors.Contains(pair.Key), pair.Value.Item1 ? "This interior requires the online map to load." : "");
                 AddItem(item);
 
                 item.CheckboxEvent += (sender, @checked) =>
